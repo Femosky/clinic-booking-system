@@ -4,25 +4,20 @@ import { Link } from 'react-router-dom';
 import logo from '../assets/react.svg';
 import { Menu, X } from 'lucide-react';
 import { Button } from '../components/Button';
-import {
-    APP_NAME,
-    bookingPath,
-    contactPath,
-    dashboardPath,
-    homePath,
-    loginPath,
-    servicesPath,
-} from '../global/global_variables';
+import { APP_NAME, bookingPath, contactPath, dashboardPath, loginPath, servicesPath } from '../global/global_variables';
 import { PropTypes } from 'prop-types';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/firebase';
 import { signOut } from 'firebase/auth';
+import { useUserData } from '../hooks/useUserData';
 
 export function Navbar() {
     const navigate = useNavigate();
     const location = useLocation();
     const { pathname } = location;
     const [user] = useAuthState(auth);
+
+    const { userData } = useUserData();
 
     const isInHomePage = pathname === '/';
     const isInBookingPage = pathname === '/booking';
@@ -36,7 +31,7 @@ export function Navbar() {
             toggleNav();
         }
 
-        navigate('/login');
+        navigate(loginPath);
     }
 
     async function logout() {
@@ -87,8 +82,8 @@ export function Navbar() {
     }, []);
 
     return (
-        <header className="mt-4 p-2 w-full">
-            <div className="w-full flex items-center justify-between">
+        <header className="mt-4 p-2 w-full flex flex-col gap-2">
+            <section className="w-full flex items-center justify-between">
                 <LogoSection />
 
                 <NavItemsSection
@@ -110,7 +105,16 @@ export function Navbar() {
                     goToRegister={goToRegister}
                     logout={logout}
                 />
-            </div>
+            </section>
+
+            {user && (
+                <section className="w-full flex justify-end text-dark">
+                    <div className="flex gap-2">
+                        <p className="font-semibold">Logged in:</p>
+                        <p>{userData?.name}</p>
+                    </div>
+                </section>
+            )}
 
             {isNavOpen && (
                 <ClosedNavItemsSection
@@ -199,15 +203,17 @@ function NavItemsSection({ user, isInHomePage, isInBookingPage, isInServicesPage
                         isInHomePage && 'text-primary-hover font-medium'
                     }`}
                 >
-                    <Link to={user ? dashboardPath : homePath}>Home</Link>
+                    <Link to={user ? dashboardPath : loginPath}>Home</Link>
                 </li>
-                <li
-                    className={`text-sm hover:text-[#19B49B] transition-colors bg-secondary text-primary ${
-                        isInBookingPage && 'text-primary-hover font-medium'
-                    }`}
-                >
-                    <Link to={bookingPath}>Booking</Link>
-                </li>
+                {user && (
+                    <li
+                        className={`text-sm hover:text-[#19B49B] transition-colors bg-secondary text-primary ${
+                            isInBookingPage && 'text-primary-hover font-medium'
+                        }`}
+                    >
+                        <Link to={bookingPath}>Booking</Link>
+                    </li>
+                )}
                 <li
                     className={`text-sm hover:text-[#19B49B] transition-colors bg-secondary text-primary ${
                         isInServicesPage && 'text-primary-hover font-medium'
@@ -258,16 +264,18 @@ function ClosedNavItemsSection({
                     }`}
                     onClick={closeNav}
                 >
-                    <Link to={user ? dashboardPath : homePath}>Home</Link>
+                    <Link to={user ? dashboardPath : loginPath}>Home</Link>
                 </li>
-                <li
-                    className={`text-lg text-primary hover:text-primary-hover transition-colors ${
-                        isInBookingPage && 'text-primary-hover font-medium'
-                    }`}
-                    onClick={closeNav}
-                >
-                    <Link to={bookingPath}>Booking</Link>
-                </li>
+                {user && (
+                    <li
+                        className={`text-lg text-primary hover:text-primary-hover transition-colors ${
+                            isInBookingPage && 'text-primary-hover font-medium'
+                        }`}
+                        onClick={closeNav}
+                    >
+                        <Link to={bookingPath}>Booking</Link>
+                    </li>
+                )}
                 <li
                     className={`text-lg text-primary hover:text-primary-hover transition-colors ${
                         isInServicesPage && 'text-primary-hover font-medium'

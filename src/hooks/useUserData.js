@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { auth } from '../firebase/firebase';
 import { getDatabase, ref, get } from 'firebase/database';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { convertKeysToCamelCase } from '../global/global_methods';
 
 export function useUserData() {
     const [user] = useAuthState(auth);
-    const [userType, setUserType] = useState(false);
 
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -13,31 +13,25 @@ export function useUserData() {
 
     const db = getDatabase();
 
-    function toggleUserType() {
-        setUserType(!userType);
-    }
-
     useEffect(() => {
         async function fetchUserData() {
-            console.log('got here?');
-
             if (!user) {
                 setLoading(false);
                 return;
             }
 
-            console.log('got here2?');
             try {
                 const clinicRef = ref(db, `clinics/${user.uid}`);
                 const clinicSnapshot = await get(clinicRef);
                 if (clinicSnapshot.exists()) {
-                    setUserData({ ...clinicSnapshot.val(), type: 'clinic' });
-                    console.log('USERDATA:', userData);
+                    const clinicData = convertKeysToCamelCase(clinicSnapshot.val());
+                    setUserData({ ...clinicData });
                 } else {
                     const patientRef = ref(db, `patients/${user.uid}`);
                     const patientSnapshot = await get(patientRef);
                     if (patientSnapshot.exists()) {
-                        setUserData({ ...patientSnapshot.val(), type: 'patient' });
+                        const patientData = convertKeysToCamelCase(patientSnapshot.val());
+                        setUserData({ ...patientData });
                     } else {
                         setUserData(null);
                     }
@@ -57,5 +51,5 @@ export function useUserData() {
         }
     }, [user, db]);
 
-    return { userData, userDataError, loading, userType, toggleUserType };
+    return { userData, userDataError, loading };
 }

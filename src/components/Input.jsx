@@ -13,7 +13,7 @@ const inputStyles = cva(['transition-colors'], {
         },
         size: {
             default: ['py-2', 'font-medium', 'text-sm'],
-            round: ['rounded-full', 'items-center', 'justify-center', 'p-2'],
+            round: ['rounded-md', 'items-center', 'justify-center', 'p-2'],
         },
     },
     defaultVariants: {

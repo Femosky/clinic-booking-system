@@ -2,14 +2,24 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import logo from '../assets/react.svg';
-import { Menu, X } from 'lucide-react';
+import { Menu, ShoppingCartIcon, X } from 'lucide-react';
 import { Button } from '../components/Button';
-import { APP_NAME, bookingPath, contactPath, dashboardPath, loginPath, servicesPath } from '../global/global_variables';
+import {
+    APP_NAME,
+    bookingPath,
+    contactPath,
+    dashboardPath,
+    loginPath,
+    servicesPath,
+    userType2,
+} from '../global/global_variables';
 import { PropTypes } from 'prop-types';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/firebase';
 import { signOut } from 'firebase/auth';
 import { useUserData } from '../hooks/useUserData';
+import { twMerge } from 'tailwind-merge';
+import { useCart } from '../hooks/useCart';
 
 export function Navbar() {
     const navigate = useNavigate();
@@ -19,20 +29,12 @@ export function Navbar() {
 
     const { userData } = useUserData();
 
-    const isInHomePage = pathname === '/';
-    const isInBookingPage = pathname === '/booking';
-    const isInServicesPage = pathname === '/services';
-    const isInContactPage = pathname === '/contact';
+    const isInHomePage = pathname === (dashboardPath || loginPath);
+    const isInBookingPage = pathname === bookingPath;
+    const isInServicesPage = pathname === servicesPath;
+    const isInContactPage = pathname === contactPath;
 
     const [isNavOpen, setIsNavOpen] = useState(false);
-
-    function goToLogin() {
-        if (isNavOpen) {
-            toggleNav();
-        }
-
-        navigate(loginPath);
-    }
 
     async function logout() {
         try {
@@ -48,12 +50,28 @@ export function Navbar() {
         }
     }
 
+    function goToLogin() {
+        if (isNavOpen) {
+            toggleNav();
+        }
+
+        navigate(loginPath);
+    }
+
     function goToRegister() {
         if (isNavOpen) {
             toggleNav();
         }
 
         navigate('/register');
+    }
+
+    function goToCheckout() {
+        if (isNavOpen) {
+            toggleNav();
+        }
+
+        navigate('/checkout');
     }
 
     function toggleNav() {
@@ -100,9 +118,11 @@ export function Navbar() {
 
                 <LogoutSection
                     classAdded="hidden md:flex"
+                    userData={userData}
                     user={user}
                     goToLogin={goToLogin}
                     goToRegister={goToRegister}
+                    goToCheckout={goToCheckout}
                     logout={logout}
                 />
             </section>
@@ -121,7 +141,6 @@ export function Navbar() {
                     user={user}
                     closeNav={closeNav}
                     isInHomePage={isInHomePage}
-                    isInBookingPage={isInBookingPage}
                     isInServicesPage={isInServicesPage}
                     isInContactPage={isInContactPage}
                     goToLogin={goToLogin}
@@ -174,9 +193,23 @@ LogoutButton.propTypes = {
     logout: PropTypes.func.isRequired,
 };
 
-function LogoutSection({ classAdded, user, goToLogin, goToRegister, logout }) {
+function LogoutSection({ userData, classAdded, user, goToLogin, goToRegister, goToCheckout, logout }) {
+    const { cart } = useCart();
+
     return (
-        <div className={classAdded}>
+        <div className={twMerge('flex items-center gap-5', classAdded)}>
+            {userData && userData.userType === userType2 && (
+                <div className="relative max-w-30">
+                    {cart && cart.length > 0 && (
+                        <span className="absolute flex justify-center items-center top-0 right-0 z-0 w-fit px-2 rounded-full bg-red-500 text-xs text-white">
+                            {cart.length}
+                        </span>
+                    )}
+                    <Button onClick={goToCheckout} variant="transparent" size="round">
+                        <ShoppingCartIcon />
+                    </Button>
+                </div>
+            )}
             {!user ? (
                 <LoginLinks goToLogin={goToLogin} goToRegister={goToRegister} />
             ) : (
@@ -187,42 +220,35 @@ function LogoutSection({ classAdded, user, goToLogin, goToRegister, logout }) {
 }
 
 LogoutSection.propTypes = {
-    classAdded: PropTypes.string.isRequired,
-    user: PropTypes.object.isRequired,
+    userData: PropTypes.object.isRequired,
+    classAdded: PropTypes.string,
+    user: PropTypes.object,
     goToLogin: PropTypes.func.isRequired,
     goToRegister: PropTypes.func.isRequired,
+    goToCheckout: PropTypes.func.isRequired,
     logout: PropTypes.func.isRequired,
 };
 
-function NavItemsSection({ user, isInHomePage, isInBookingPage, isInServicesPage, isInContactPage }) {
+function NavItemsSection({ user, isInHomePage, isInServicesPage, isInContactPage }) {
     return (
         <nav className="mx-auto flex items-end md:items-center justify-between md:gap-1 lg:gap-3 px-4 py-3 md:px-6">
             <ul className="hidden md:flex md:gap-10">
                 <li
-                    className={`text-sm hover:text-[#19B49B] transition-colors bg-secondary text-primary ${
+                    className={`text-sm hover:text-normal transition-colors bg-secondary text-primary ${
                         isInHomePage && 'text-primary-hover font-medium'
                     }`}
                 >
                     <Link to={user ? dashboardPath : loginPath}>Home</Link>
                 </li>
-                {user && (
-                    <li
-                        className={`text-sm hover:text-[#19B49B] transition-colors bg-secondary text-primary ${
-                            isInBookingPage && 'text-primary-hover font-medium'
-                        }`}
-                    >
-                        <Link to={bookingPath}>Booking</Link>
-                    </li>
-                )}
                 <li
-                    className={`text-sm hover:text-[#19B49B] transition-colors bg-secondary text-primary ${
+                    className={`text-sm hover:text-normal transition-colors bg-secondary text-primary ${
                         isInServicesPage && 'text-primary-hover font-medium'
                     }`}
                 >
                     <Link to={servicesPath}>Services</Link>
                 </li>
                 <li
-                    className={`text-sm hover:text-[#19B49B] transition-colors bg-secondary text-primary ${
+                    className={`text-sm hover:text-normal transition-colors bg-secondary text-primary ${
                         isInContactPage && 'text-primary-hover font-medium'
                     }`}
                 >
@@ -234,9 +260,8 @@ function NavItemsSection({ user, isInHomePage, isInBookingPage, isInServicesPage
 }
 
 NavItemsSection.propTypes = {
-    user: PropTypes.object.isRequired, // COME BACK TO THIS
+    user: PropTypes.object, // COME BACK TO THIS
     isInHomePage: PropTypes.bool.isRequired,
-    isInBookingPage: PropTypes.bool.isRequired,
     isInServicesPage: PropTypes.bool.isRequired,
     isInContactPage: PropTypes.bool.isRequired,
 };
@@ -245,7 +270,6 @@ function ClosedNavItemsSection({
     user,
     closeNav,
     isInHomePage,
-    isInBookingPage,
     isInServicesPage,
     isInContactPage,
     goToLogin,
@@ -266,16 +290,6 @@ function ClosedNavItemsSection({
                 >
                     <Link to={user ? dashboardPath : loginPath}>Home</Link>
                 </li>
-                {user && (
-                    <li
-                        className={`text-lg text-primary hover:text-primary-hover transition-colors ${
-                            isInBookingPage && 'text-primary-hover font-medium'
-                        }`}
-                        onClick={closeNav}
-                    >
-                        <Link to={bookingPath}>Booking</Link>
-                    </li>
-                )}
                 <li
                     className={`text-lg text-primary hover:text-primary-hover transition-colors ${
                         isInServicesPage && 'text-primary-hover font-medium'
@@ -307,10 +321,9 @@ function ClosedNavItemsSection({
 }
 
 ClosedNavItemsSection.propTypes = {
-    user: PropTypes.object.isRequired, // COME BACK TO THIS
+    user: PropTypes.object, // COME BACK TO THIS
     closeNav: PropTypes.func.isRequired,
     isInHomePage: PropTypes.bool.isRequired,
-    isInBookingPage: PropTypes.bool.isRequired,
     isInServicesPage: PropTypes.bool.isRequired,
     isInContactPage: PropTypes.bool.isRequired,
     goToLogin: PropTypes.func.isRequired,

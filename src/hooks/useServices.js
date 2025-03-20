@@ -13,18 +13,20 @@ export function useServices(clinicId) {
             return;
         }
 
-        const servicesRef = ref(db, `clinics/${clinicId}/services`);
+        const servicesRef = ref(db, `services/${clinicId}`);
         // Subscribe to changes using onValue
         const unsubscribe = onValue(
             servicesRef,
             (snapshot) => {
                 if (snapshot.exists()) {
                     const data = snapshot.val();
+
                     // Convert the object to an array of service objects
                     const servicesArray = Object.keys(data).map((key) => ({
                         id: key,
                         ...data[key],
                     }));
+
                     setServices(servicesArray);
                 } else {
                     setServices([]);
@@ -37,7 +39,6 @@ export function useServices(clinicId) {
             }
         );
 
-        console.log();
         // Cleanup subscription on unmount
         return () => unsubscribe();
     }, [clinicId, db]);

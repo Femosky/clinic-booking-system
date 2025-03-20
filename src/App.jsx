@@ -31,13 +31,22 @@ import { Checkout } from './pages/Checkout';
 import { ResetPassword } from './pages/ResetPassword';
 import { Test } from './pages/Test';
 import { AddService } from './pages/AddService';
+import { CartProvider } from './contexts/CartProvider';
 
 function App() {
+    return (
+        <CartProvider>
+            <AppContent />
+        </CartProvider>
+    );
+}
+
+function AppContent() {
     return (
         <div className="flex-1 flex flex-col min-w-[20rem] w-full min-h-screen justify-between md:items-center relative z-10">
             <div className={twMerge('flex flex-col items-center px-6 w-full', PAGE_MAX_WIDTH)}>
                 <Navbar />
-                <div className="w-full my-10 flex flex-col items-center border border-red-600">
+                <div className="w-full my-10 flex flex-col items-center">
                     <Routes>
                         <Route path={servicesPath} element={<ServicesPage />} />
                         <Route path={contactPath} element={<Contact />} />

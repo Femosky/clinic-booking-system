@@ -3,13 +3,15 @@ import { twMerge } from 'tailwind-merge';
 import { BUTTON_BORDER_THICKNESS } from '../global/global_variables';
 import PropTypes from 'prop-types';
 
-const buttonStyles = cva(['transition-colors'], {
+const buttonStyles = cva(['transition-colors', 'cursor-pointer'], {
     variants: {
         variant: {
             default: ['bg-normal', 'hover:bg-hover', 'text-dark'],
+            disabled: ['bg-disabled', 'text-dark'],
             light_border: ['bg-normal', 'hover:bg-hover', 'text-dark', `border-${BUTTON_BORDER_THICKNESS} border-dark`],
             dark: ['bg-dark', 'hover:bg-dark-hover', 'text-normal'],
             hot: ['bg-hot', 'text-white', 'hover:bg-hot-hover'],
+            transparent: ['hover:bg-translucent'],
             clear: [],
         },
         size: {
@@ -25,13 +27,21 @@ const buttonStyles = cva(['transition-colors'], {
     },
 });
 
-export function Button({ type, variant, size, className, ...props }) {
-    return <button {...props} type={type} className={twMerge(buttonStyles({ variant, size }), className)} />;
+export function Button({ onClick, type, variant, size, className, ...props }) {
+    return (
+        <button
+            {...props}
+            type={type}
+            onClick={onClick}
+            className={twMerge(buttonStyles({ variant, size }), className)}
+        />
+    );
 }
 
 Button.propTypes = {
-    type: PropTypes.any.isRequired,
-    variant: PropTypes.any.isRequired,
-    size: PropTypes.any.isRequired,
-    className: PropTypes.any.isRequired,
+    onClick: PropTypes.any,
+    type: PropTypes.any,
+    variant: PropTypes.any,
+    size: PropTypes.any,
+    className: PropTypes.any,
 };

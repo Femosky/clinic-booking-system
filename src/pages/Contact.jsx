@@ -9,22 +9,22 @@ export function Contact() {
                 <h2>Contact Our Friendly Team</h2>
             </section>
 
-            <section className="w-full flex gap-32">
-                <div className="bg-normal w-1/3 px-2 py-7 rounded-2xl">
+            <section className="w-full flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="bg-normal min-w-[15rem] w-1/3 px-2 py-7 rounded-2xl">
                     <img src={chat} className="" alt="chat with us icon" />
                     <p>Chat with us</p>
                     <p>Speak to your friendly team</p>
                     <p>clinicbooking@gmail.com</p>
                 </div>
 
-                <div className="bg-normal w-1/3 px-2 py-7 rounded-2xl">
+                <div className="bg-normal min-w-[15rem] w-1/3 px-2 py-7 rounded-2xl">
                     <img src={locationPin} className="" alt="chat with us icon" />
                     <p>Chat with us</p>
                     <p>Speak to your friendly team</p>
                     <p>clinicbooking@gmail.com</p>
                 </div>
 
-                <div className="bg-normal w-1/3 px-2 py-7 rounded-2xl">
+                <div className="bg-normal min-w-[15rem] w-1/3 px-2 py-7 rounded-2xl">
                     <img src={phoneIcon} className="" alt="chat with us icon" />
                     <p>Chat with us</p>
                     <p>Speak to your friendly team</p>

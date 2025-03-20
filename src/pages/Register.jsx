@@ -14,7 +14,8 @@ import { SignupButton } from '../components/SignupButton';
 import { BorderLine } from '../components/BorderLine';
 import { Input } from '../components/Input';
 import { getDatabase, ref, set } from 'firebase/database';
-import { capitalize } from '../global/global_methods';
+import { capitalize, isValidEmail } from '../global/global_methods';
+import { ErrorMessageView } from '../components/ErrorMessageView';
 
 export function Register() {
     const navigate = useNavigate();
@@ -32,14 +33,14 @@ export function Register() {
 
     return (
         <div className="flex w-full min-h-[50rem]">
-            <section className="w-1/2">
+            <section className="w-full flex justify-center md:justify-start md:w-1/2">
                 <SignUpForm />
             </section>
 
-            <section className="flex flex-col items-end w-1/2">
+            <section className="hidden md:flex flex-col items-end w-1/2">
                 <div className="absolute inset-0 -z-10 w-full">
                     <img
-                        className="w-[40rem] h-[55rem] top-0 right-40 absolute"
+                        className="w-full max-w-[40rem] h-full max-h-[55rem] top-0 right-40 absolute"
                         src={rectangleShape}
                         alt="rectangle background shape"
                     />
@@ -119,18 +120,50 @@ function SignUpForm() {
         }
     }
 
+    function areInputsValid() {
+        if (userType) {
+            if (clinicName.length === 0) {
+                setError('Please enter your clinic name.');
+                return false;
+            } else if (clinicName.length < 2) {
+                setError('Please enter a valid clinic name.');
+                return false;
+            }
+        } else {
+            if (fullName.length === 0) {
+                setError('Please enter your full name.');
+                return false;
+            } else if (clinicName.length < 2) {
+                setError('Please enter a valid full name.');
+                return false;
+            }
+        }
+
+        if (!isValidEmail(email)) {
+            setError('Please enter a valid email address.');
+            return false;
+        }
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match.');
+            return false;
+        }
+
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return false;
+        }
+
+        setError('');
+        return true;
+    }
+
     async function handleRegister(event) {
         event.preventDefault();
 
         // VALIDATIONS FIRST
 
-        if (password !== confirmPassword) {
-            setError('Passwords do not match.');
-            return;
-        }
-
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters.');
+        if (!areInputsValid()) {
             return;
         }
 
@@ -164,7 +197,7 @@ function SignUpForm() {
         <div className="w-full max-w-[35rem] flex flex-col gap-8 items-center">
             <div className="text-7xl pb-4 w-full">Sign Up</div>
 
-            <section className="w-full flex">
+            <section className="w-full flex flex-col items-center md:flex-row">
                 <h3 className="w-1/2 text-dark font-semibold text-lg">What type of user are you?</h3>
                 <div className="w-1/2 flex">
                     <Button className="w-full" onClick={toggleUserType} variant={!userType ? 'dark' : 'default'}>
@@ -269,9 +302,13 @@ function SignUpForm() {
                         <Link to={resetPasswordPath}>Forgot password?</Link>
                     </div>
 
-                    {error && <p className="text-red-500">{error}</p>}
+                    <ErrorMessageView error={error} />
 
-                    <Button type="submit" size="special" className="font-semibold text-xl w-full self-center">
+                    <Button
+                        type="submit"
+                        size="special"
+                        className="font-semibold border border-dark text-xl w-full self-center"
+                    >
                         <img src="" alt="" />
                         Register
                     </Button>

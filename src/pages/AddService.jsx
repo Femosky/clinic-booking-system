@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuth } from 'firebase/auth';
 import { getDatabase, ref, push } from 'firebase/database';
-import { servicesPath } from '../global/global_variables';
+import { loginPath, servicesPath } from '../global/global_variables';
+import { Button } from '../components/Button';
+import { auth } from '../firebase/firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { useUserData } from '../hooks/useUserData';
 
 export function AddService() {
+    const navigate = useNavigate();
+    const [user] = useAuthState(auth);
+    const { userData } = useUserData();
+
     const [serviceName, setServiceName] = useState('');
     const [description, setDescription] = useState('');
     const [doctor, setDoctor] = useState('');
@@ -14,38 +21,39 @@ export function AddService() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    const navigate = useNavigate();
-    const auth = getAuth();
     const db = getDatabase();
-    const user = auth.currentUser;
+
+    function goToServicesPage() {
+        navigate(servicesPath);
+    }
 
     // Redirect to login if not authenticated
     if (!user) {
-        navigate('/login');
+        navigate(loginPath);
         return null;
     }
 
     // Add a new empty slot field
-    const addSlotField = () => {
+    function addSlotField() {
         setSlots([...slots, { date: '', time: '' }]);
-    };
+    }
 
     // Update a specific slot field (date or time)
-    const updateSlot = (index, key, value) => {
+    function updateSlot(index, key, value) {
         const newSlots = [...slots];
         newSlots[index][key] = value;
         setSlots(newSlots);
-    };
+    }
 
     // Remove a slot from the list
-    const removeSlot = (index) => {
+    function removeSlot(index) {
         const newSlots = slots.filter((_, i) => i !== index);
         setSlots(newSlots);
-    };
+    }
 
     // Submit new service
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    async function handleSubmit(event) {
+        event.preventDefault();
         setError('');
         setSuccess('');
 
@@ -55,14 +63,20 @@ export function AddService() {
             return;
         }
 
+        // Grab clinic name
+        if (!userData) {
+            setError('Could not get clinic name: userData is null');
+            return;
+        }
+
         // Build the service data object
         const serviceData = {
             name: serviceName,
+            clinicName: userData.name,
             description,
             doctor,
             price: parseFloat(price),
             duration: parseInt(duration, 10),
-            // Build a slots object with each slot keyed by a generated index.
             slots: {},
         };
 
@@ -75,7 +89,7 @@ export function AddService() {
         });
 
         try {
-            const servicesRef = ref(db, `clinics/${user.uid}/services`);
+            const servicesRef = ref(db, `services/${user.uid}`);
             await push(servicesRef, serviceData);
             setSuccess('Service added successfully!');
             navigate(servicesPath);
@@ -83,10 +97,14 @@ export function AddService() {
             console.error('Error adding service:', err);
             setError('Error adding service, please try again.');
         }
-    };
+    }
 
     return (
         <div className="max-w-3xl mx-auto p-6">
+            <Button onClick={goToServicesPage} variant="hot">
+                Cancel
+            </Button>
+
             <h2 className="text-3xl font-bold mb-4">Add New Service</h2>
             {error && <p className="text-red-500 mb-4">{error}</p>}
             {success && <p className="text-green-500 mb-4">{success}</p>}

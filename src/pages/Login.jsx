@@ -1,6 +1,6 @@
 import { Button } from '../components/Button';
 import { useEffect, useState } from 'react';
-import { dashboardPath, resetPasswordPath, registerPath, userType2, userType1 } from '../global/global_variables';
+import { dashboardPath, resetPasswordPath, registerPath } from '../global/global_variables';
 import { auth, provider } from '../firebase/firebase';
 import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 import { Link, useNavigate } from 'react-router-dom';
@@ -13,8 +13,8 @@ import image3 from '../assets/image 14.png';
 import { Input } from '../components/Input';
 import { SignupButton } from '../components/SignupButton';
 import { BorderLine } from '../components/BorderLine';
-import { useUserData } from '../hooks/useUserData';
-import { capitalize } from '../global/global_methods';
+import { ErrorMessageView } from '../components/ErrorMessageView';
+import { isValidEmail } from '../global/global_methods';
 
 export function Login() {
     const navigate = useNavigate();
@@ -40,14 +40,14 @@ export function Login() {
 
     return (
         <div className="flex w-full min-h-[50rem]">
-            <section className="w-1/2">
+            <section className="w-full flex justify-center md:justify-start md:w-1/2">
                 <LoginForm signInWithGoogle={signInWithGoogle} />
             </section>
 
-            <section className="flex flex-col items-end w-1/2">
+            <section className="hidden md:flex flex-col items-end w-1/2">
                 <div className="absolute inset-0 -z-10 w-full">
                     <img
-                        className="w-[40rem] h-[55rem] top-0 right-40 absolute"
+                        className="w-full max-w-[40rem] h-full max-h-[55rem] top-0 right-40 absolute"
                         src={rectangleShape}
                         alt="rectangle background shape"
                     />
@@ -84,8 +84,22 @@ function LoginForm({ signInWithGoogle }) {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
+    function areInputsValid() {
+        if (!isValidEmail(email)) {
+            setError('Please enter a valid email address.');
+            return false;
+        }
+
+        setError('');
+        return true;
+    }
+
     async function handleEmailLogin(event) {
         event.preventDefault();
+
+        if (!areInputsValid()) {
+            return;
+        }
 
         try {
             await signInWithEmailAndPassword(auth, email, password);
@@ -131,9 +145,13 @@ function LoginForm({ signInWithGoogle }) {
                     <Link to={resetPasswordPath}>Forgot password?</Link>
                 </div>
 
-                {error && <p className="text-red-500">{error}</p>}
+                <ErrorMessageView error={error} />
 
-                <Button type="submit" size="special" className="font-semibold text-xl w-full self-center">
+                <Button
+                    type="submit"
+                    size="special"
+                    className="font-semibold border border-dark text-xl w-full self-center"
+                >
                     <img src="" alt="" />
                     Sign In
                 </Button>

@@ -8,7 +8,8 @@ const buttonStyles = cva(['transition-colors', 'cursor-pointer'], {
         variant: {
             default: ['bg-normal', 'hover:bg-hover', 'text-dark'],
             disabled: ['bg-disabled', 'text-dark'],
-            light_border: ['bg-normal', 'hover:bg-hover', 'text-dark', `border-${BUTTON_BORDER_THICKNESS} border-dark`],
+            border_1: ['bg-normal', 'hover:bg-hover', 'text-dark', 'border border-dark'],
+            border_2: ['bg-normal', 'hover:bg-hover', 'text-dark', `${BUTTON_BORDER_THICKNESS} border-dark`],
             dark: ['bg-dark', 'hover:bg-dark-hover', 'text-normal'],
             hot: ['bg-hot', 'text-white', 'hover:bg-hot-hover'],
             transparent: ['hover:bg-translucent'],

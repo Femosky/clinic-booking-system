@@ -150,7 +150,8 @@ function LoginForm({ signInWithGoogle }) {
                 <Button
                     type="submit"
                     size="special"
-                    className="font-semibold border border-dark text-xl w-full self-center"
+                    variant="border_1"
+                    className="font-semibold text-xl w-full self-center"
                 >
                     <img src="" alt="" />
                     Sign In

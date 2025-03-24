@@ -1,7 +1,6 @@
 // import reactLogo from './assets/react.svg'
 import { Route, Routes } from 'react-router-dom';
 import './App.css';
-import { Homepage } from './pages/Homepage';
 import { Dashboard } from './pages/Dashboard';
 import { Navbar } from './layouts/Navbar';
 import { Footer } from './layouts/Footer';
@@ -14,6 +13,7 @@ import { Contact } from './pages/Contact';
 import { Register } from './pages/Register';
 import {
     addServicePath,
+    appointmentDetailsPath,
     bookingPath,
     checkoutPath,
     contactPath,
@@ -32,12 +32,20 @@ import { ResetPassword } from './pages/ResetPassword';
 import { Test } from './pages/Test';
 import { AddService } from './pages/AddService';
 import { CartProvider } from './contexts/CartProvider';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from './firebase/firebase';
+import { useUserData } from './hooks/useUserData';
+import { UserDataProvider } from './contexts/UserDataProvider';
+import { LogoLoadingScreen } from './components/LogoLoadingScreen';
+import { AppointmentDetails } from './pages/AppointmentDetails';
 
 function App() {
     return (
-        <CartProvider>
-            <AppContent />
-        </CartProvider>
+        <UserDataProvider>
+            <CartProvider>
+                <AppContent />
+            </CartProvider>
+        </UserDataProvider>
     );
 }
 
@@ -59,6 +67,7 @@ function AppContent() {
                         </Route>
                         <Route element={<PrivateRoutes />}>
                             <Route path={dashboardPath} element={<Dashboard />} />
+                            <Route path={appointmentDetailsPath} element={<AppointmentDetails />} />
                             <Route path={addServicePath} element={<AddService />} />
                             <Route path={bookingPath} element={<Booking />} />
                             <Route path={checkoutPath} element={<Checkout />} />

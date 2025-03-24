@@ -1,6 +1,3 @@
-import heart from '../assets/image 5.png';
-import pen from '../assets/pencil-5824 5.png';
-import trash from '../assets/remove-or-delete-black-circle-20731 5.png';
 import paypal from '../assets/paypal-credit-card-payment-method-19675.png';
 import visa from '../assets/visa-credit-card-payment-method-19674.png';
 import gpay from '../assets/google-pay-credit-card-payment-method-19705.png';
@@ -12,19 +9,36 @@ import { useCart } from '../hooks/useCart';
 import { useEffect, useState } from 'react';
 import { useUserData } from '../hooks/useUserData';
 import { calculateTax } from '../global/tax';
-import { get, getDatabase, ref } from 'firebase/database';
-import { useNavigate } from 'react-router-dom';
 import { ErrorMessageView } from '../components/ErrorMessageView';
 import { Input } from '../components/Input';
-import { stockCardNumber, stockCVV, stockDate, stockName } from '../global/global_variables';
+import { stockCardNumber, stockCVV, stockDate, stockName, userType1 } from '../global/global_variables';
 import { isValidCardExpiryDate, isValidCardNumber } from '../global/global_methods';
+import { CartItem } from '../components/CartItem';
+import { getDatabase, push, ref, set } from 'firebase/database';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../firebase/firebase';
+import { useNavigate } from 'react-router-dom';
+import { LogoLoadingScreen } from '../components/LogoLoadingScreen';
 
 export function Checkout() {
     const { cart } = useCart();
+    const navigate = useNavigate();
+    const { userData } = useUserData();
 
     useEffect(() => {
-        console.log('CART IS', cart);
-    }, [cart]);
+        if (userData !== null && userData.userType === userType1) {
+            // Navigate back to the previous page
+            navigate(-1);
+        }
+    }, [userData, navigate]);
+
+    if (userData === null) {
+        return <LogoLoadingScreen />;
+    }
+
+    if (userData.userType === userType1) {
+        return <LogoLoadingScreen />;
+    }
 
     return (
         <div className="w-full flex justify-between">
@@ -61,7 +75,9 @@ export function Checkout() {
 }
 
 function CheckoutForm() {
-    const { cart } = useCart();
+    const { cart, setCart } = useCart();
+    const [user] = useAuthState(auth);
+    const db = getDatabase();
 
     const [cardNumber, setCardNumber] = useState('');
     const [cardHolderName, setCardHolderName] = useState('');
@@ -131,12 +147,56 @@ function CheckoutForm() {
         return true;
     }
 
+    function clearInputs() {
+        setCardNumber('');
+        setCardHolderName('');
+        setExpiryDate('');
+        setCvv('');
+    }
+
     async function handlePayment() {
         // Handle payment logic
 
         if (!areInputsValid()) {
             return;
         }
+
+        if (cart === null && cart.length < 1) {
+            return;
+        }
+
+        const patientId = user.uid;
+        if (patientId === null) {
+            return;
+        }
+
+        cart.forEach(async (cartItem) => {
+            const clinicId = cartItem.booking_details.clinic_id;
+
+            try {
+                const appointmentRef = ref(db, `appointments/${clinicId}`);
+                const appointmentResult = await push(appointmentRef, cartItem);
+
+                if (appointmentResult === null) {
+                    return;
+                }
+
+                const appointmentID = appointmentResult.key;
+                const patientRegistryRef = ref(db, `patients/${patientId}/appointments/${appointmentID}`);
+
+                await set(patientRegistryRef, {
+                    clinic_id: clinicId,
+                    timestamp: Date.now(),
+                });
+
+                // Clean the cart
+                setCart([]);
+                clearInputs();
+            } catch (err) {
+                console.log(err.message);
+                setError(err.message);
+            }
+        });
     }
 
     useEffect(() => {
@@ -224,94 +284,6 @@ function CheckoutForm() {
     );
 }
 
-function CartItem({ cartItem, index }) {
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const { cart, setCart } = useCart();
-
-    function removeCartItem(index) {
-        let tempCart = [...cart];
-
-        if (tempCart) {
-            tempCart.splice(index, 1);
-            setCart(tempCart);
-        }
-    }
-
-    async function editBooking(index) {
-        const service = await handleGetService(index);
-
-        if (service) {
-            navigate('/booking', { state: { selectedService: service } });
-        }
-    }
-
-    async function handleGetService(index) {
-        const clinicId = cart[index].booking_details.clinic_id;
-        const serviceId = cart[index].booking_details.service_id;
-
-        if (!clinicId || !serviceId) {
-            setError('Clinic or service ID missing');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const db = getDatabase();
-            const serviceRef = ref(db, `services/${clinicId}/${serviceId}`);
-            const snapshot = await get(serviceRef);
-
-            if (snapshot.exists()) {
-                return {
-                    id: serviceId,
-                    clinicId,
-                    index,
-                    ...snapshot.val(),
-                };
-            } else {
-                console.log('Unable to get service');
-                setError('Appointment not available');
-            }
-        } catch (err) {
-            setError(err.message);
-            console.log(err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    return (
-        <div className="w-full flex px-10 py-2 items-center justify-between bg-normal rounded-2xl">
-            <section>
-                <img className="w-20" src={heart} alt="cart item icon" />
-            </section>
-
-            <section className="w-full px-20 flex justify-between">
-                <p>{cartItem.booking_details.service_name}</p>
-                <p>{cartItem.booking_details.doctor}</p>
-                <p>${parseFloat(cartItem.booking_details.price).toFixed(2)}</p>
-            </section>
-
-            <section className="flex">
-                <Button onClick={() => editBooking(index)} variant="clear" size="round">
-                    <img src={pen} alt="edit cart item icon" />
-                </Button>
-                <Button onClick={() => removeCartItem(index)} variant="clear" size="round">
-                    <img src={trash} alt="delete cart item icon" />
-                </Button>
-            </section>
-            <ErrorMessageView error={error} />
-        </div>
-    );
-}
-
-CartItem.propTypes = {
-    cartItem: PropTypes.object,
-    index: PropTypes.number.isRequired,
-};
-
 function OrderSummaryView() {
     const { cart } = useCart();
     const [total, setTotal] = useState(0.0);
@@ -322,17 +294,17 @@ function OrderSummaryView() {
 
     const province = 'ab';
 
-    function calculateGrandTotal(tempDeliveryFee, tempTax, tempTotal) {
-        const discount = userData?.discount ? userData.discount : 0.0;
-
-        return discount + tempDeliveryFee + tempTax + tempTotal;
-    }
-
     function calculateDelivery() {
         return 10.0;
     }
 
     useEffect(() => {
+        function calculateGrandTotal(tempDeliveryFee, tempTax, tempTotal) {
+            const discount = userData?.discount ? userData.discount : 0.0;
+
+            return discount + tempDeliveryFee + tempTax + tempTotal;
+        }
+
         const tempTotal = cart.reduce((acc, cartItem) => acc + parseFloat(cartItem.booking_details.price), 0.0);
 
         setTotal(tempTotal);
@@ -349,7 +321,7 @@ function OrderSummaryView() {
 
         let tempGrandTotal = calculateGrandTotal(tempDeliveryFee, tempTax, tempTotal);
         setGrandTotal(tempGrandTotal);
-    }, [cart]);
+    }, [cart, userData]);
 
     return (
         <div className="w-full flex flex-col gap-4 bg-normal rounded-2xl px-10 py-2">

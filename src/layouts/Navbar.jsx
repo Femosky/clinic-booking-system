@@ -11,6 +11,7 @@ import {
     dashboardPath,
     loginPath,
     servicesPath,
+    userType1,
     userType2,
 } from '../global/global_variables';
 import { PropTypes } from 'prop-types';
@@ -20,14 +21,35 @@ import { signOut } from 'firebase/auth';
 import { useUserData } from '../hooks/useUserData';
 import { twMerge } from 'tailwind-merge';
 import { useCart } from '../hooks/useCart';
+import { LogoLoadingScreen } from '../components/LogoLoadingScreen';
 
 export function Navbar() {
+    const [user, loadingAuth] = useAuthState(auth);
+
+    const { userData } = useUserData();
+
+    if (loadingAuth) {
+        return <LogoLoadingScreen />;
+    }
+
+    if (!user) {
+        return <NavbarContent />;
+    }
+
+    if (userData === null) {
+        return <LogoLoadingScreen />;
+    }
+
+    return <NavbarContent />;
+}
+
+function NavbarContent() {
     const navigate = useNavigate();
     const location = useLocation();
     const { pathname } = location;
     const [user] = useAuthState(auth);
 
-    const { userData } = useUserData();
+    const { userData, setUserData } = useUserData();
 
     const isInHomePage = pathname === (dashboardPath || loginPath);
     const isInBookingPage = pathname === bookingPath;
@@ -43,6 +65,8 @@ export function Navbar() {
             if (isNavOpen) {
                 toggleNav();
             }
+
+            setUserData(null);
 
             navigate(loginPath);
         } catch (error) {
@@ -98,7 +122,6 @@ export function Navbar() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-
     return (
         <header className="mt-4 p-2 w-full flex flex-col gap-2">
             <section className="w-full flex items-center justify-between">
@@ -119,7 +142,6 @@ export function Navbar() {
                 <LogoutSection
                     classAdded="hidden md:flex"
                     userData={userData}
-                    user={user}
                     goToLogin={goToLogin}
                     goToRegister={goToRegister}
                     goToCheckout={goToCheckout}
@@ -130,7 +152,9 @@ export function Navbar() {
             {user && (
                 <section className="w-full flex justify-end text-dark">
                     <div className="flex gap-2">
-                        <p className="font-semibold">Logged in:</p>
+                        <p className="font-semibold">
+                            {userData?.userType === userType1 ? 'Clinic Logged in:' : 'Patient Logged in:'}
+                        </p>
                         <p>{userData?.name}</p>
                     </div>
                 </section>
@@ -165,11 +189,11 @@ function LogoSection() {
 
 function LoginLinks({ goToLogin, goToRegister }) {
     return (
-        <div className="gap-5">
-            <Button className="text-sm md:text-base" onClick={goToLogin} variant="dark">
+        <div className="flex gap-5">
+            <Button className="text-sm md:text-base border-2 border-dark" onClick={goToLogin} variant="dark">
                 Login
             </Button>
-            <Button className="text-sm md:text-base" onClick={goToRegister} variant="light_border">
+            <Button className="text-sm md:text-base" onClick={goToRegister} variant="border_2">
                 Register
             </Button>
         </div>
@@ -193,7 +217,7 @@ LogoutButton.propTypes = {
     logout: PropTypes.func.isRequired,
 };
 
-function LogoutSection({ userData, classAdded, user, goToLogin, goToRegister, goToCheckout, logout }) {
+function LogoutSection({ userData, classAdded, goToLogin, goToRegister, goToCheckout, logout }) {
     const { cart } = useCart();
 
     return (
@@ -210,7 +234,7 @@ function LogoutSection({ userData, classAdded, user, goToLogin, goToRegister, go
                     </Button>
                 </div>
             )}
-            {!user ? (
+            {!userData ? (
                 <LoginLinks goToLogin={goToLogin} goToRegister={goToRegister} />
             ) : (
                 <LogoutButton logout={logout} />
@@ -220,9 +244,8 @@ function LogoutSection({ userData, classAdded, user, goToLogin, goToRegister, go
 }
 
 LogoutSection.propTypes = {
-    userData: PropTypes.object.isRequired,
+    userData: PropTypes.object,
     classAdded: PropTypes.string,
-    user: PropTypes.object,
     goToLogin: PropTypes.func.isRequired,
     goToRegister: PropTypes.func.isRequired,
     goToCheckout: PropTypes.func.isRequired,

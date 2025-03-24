@@ -56,6 +56,7 @@ export const dashboardPath = '/dashboard';
 export const bookingPath = '/booking';
 export const servicesPath = '/services';
 export const addServicePath = '/add-service';
+export const appointmentDetailsPath = '/appointment-details';
 export const contactPath = '/contact';
 export const checkoutPath = '/checkout';
 export const loginPath = '/';

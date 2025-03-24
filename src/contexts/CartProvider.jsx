@@ -1,5 +1,4 @@
 import { createContext, useEffect, useState } from 'react';
-import { cartLS } from '../global/global_variables';
 import PropTypes from 'prop-types';
 
 const CartContext = createContext();

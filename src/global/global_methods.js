@@ -8,18 +8,40 @@ export function capitalize(word) {
     return firstLetterCap + remainingLetters;
 }
 
-export const toCamelCase = (s) => {
-    return s.replace(/([-_][a-z])/gi, ($1) => {
+export function toSnakeCase(str) {
+    return str.replace(/([A-Z])/g, '_$1').toLowerCase();
+}
+
+export const toCamelCase = (str) => {
+    return str.replace(/([-_][a-z])/gi, ($1) => {
         return $1.toUpperCase().replace('-', '').replace('_', '');
     });
 };
 
+export function convertKeysToSnakeCase(obj) {
+    if (Array.isArray(obj)) {
+        return obj.map((item) => convertKeysToSnakeCase(item));
+    } else if (obj !== null && typeof obj === 'object') {
+        return Object.entries(obj).reduce((acc, [key, value]) => {
+            const newKey = toSnakeCase(key);
+            acc[newKey] = convertKeysToSnakeCase(value); // Recursively process nested objects/arrays
+            return acc;
+        }, {});
+    }
+    return obj; // Return primitive values as-is
+}
+
 export function convertKeysToCamelCase(obj) {
-    return Object.entries(obj).reduce((acc, [key, value]) => {
-        const newKey = toCamelCase(key);
-        acc[newKey] = value;
-        return acc;
-    }, {});
+    if (Array.isArray(obj)) {
+        return obj.map((item) => convertKeysToCamelCase(item));
+    } else if (obj !== null && typeof obj === 'object') {
+        return Object.entries(obj).reduce((acc, [key, value]) => {
+            const newKey = toCamelCase(key);
+            acc[newKey] = convertKeysToCamelCase(value); // Recursively process nested objects/arrays
+            return acc;
+        }, {});
+    }
+    return obj; // Return primitive values as-is
 }
 
 // REGEX

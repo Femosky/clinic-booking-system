@@ -9,6 +9,7 @@ import { get, getDatabase, ref, set } from 'firebase/database';
 import { useCart } from '../hooks/useCart';
 import { useUserData } from '../hooks/useUserData';
 import { userType1 } from '../global/global_variables';
+import { LogoLoadingScreen } from '../components/LogoLoadingScreen';
 
 export function Booking() {
     const location = useLocation();
@@ -73,7 +74,7 @@ export function Booking() {
     }, [selectedService]);
 
     if (!selectedService) {
-        return <div>Redirecting...</div>;
+        return <LogoLoadingScreen />;
     }
 
     return (

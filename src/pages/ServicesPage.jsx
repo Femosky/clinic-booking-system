@@ -1,25 +1,62 @@
 import { twMerge } from 'tailwind-merge';
 import clinic1 from '../assets/image 4.png';
+import loadingImage from '../assets/placeholder-image.png';
 import { PropTypes } from 'prop-types';
 import { Button } from '../components/Button';
-import { Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { useServices } from '../hooks/useServices';
 import { useUserId } from '../hooks/useUserId';
 import { useUserData } from '../hooks/useUserData';
-import { addServicePath, bookingPath, userType1, userType2 } from '../global/global_variables';
+import {
+    addServicePath,
+    bookingPath,
+    clinicTypes,
+    serviceDetailsPath,
+    userType1,
+    userType2,
+} from '../global/global_variables';
 import { useNavigate } from 'react-router-dom';
 import { useAllServices } from '../hooks/useAllServices';
 import { getDatabase, ref, remove } from 'firebase/database';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+import { convertKeysToCamelCase, convertMinutesToHours, parsePrice } from '../global/global_methods';
+import { PageTitle } from '../components/PageTitle';
 
 export function ServicesPage() {
-    const navigate = useNavigate();
     const { userData } = useUserData();
     const { uid } = useUserId();
 
-    const { services } = useServices(uid);
-    const { clinics, loading, error } = useAllServices();
+    const { services, loading: clinicServicesLoading, error: clinicError } = useServices(uid);
+    const { clinics, loading: patientServicesLoading, error: patientError } = useAllServices();
 
+    useEffect(() => {
+        console.log('SERVICES PAGE CLINICS', clinics);
+    });
+
+    return (
+        <div className="w-full">
+            {userData?.userType === userType1 ? (
+                <ClinicServicesView
+                    services={services}
+                    userData={userData}
+                    loading={clinicServicesLoading}
+                    error={clinicError}
+                />
+            ) : (
+                <PatientServicesView
+                    userData={userData}
+                    clinics={clinics}
+                    loading={patientServicesLoading}
+                    error={patientError}
+                />
+            )}
+        </div>
+    );
+}
+
+function ClinicServicesView({ services, userData, loading, error }) {
+    const navigate = useNavigate();
     const [isEditing, setIsEditing] = useState(false);
 
     function goToAddServicePage() {
@@ -31,86 +68,149 @@ export function ServicesPage() {
     }
 
     return (
-        <div className="w-full">
+        <>
             <section className="flex justify-between items-center py-4">
                 <p className="text-2xl">Services</p>
-                {userData !== null && userData.userType === userType1 ? (
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={toggleEditingMode}
-                            variant={isEditing ? 'dark' : 'default'}
-                            className="flex text-base"
-                        >
-                            {isEditing ? 'Done' : 'Edit'}
-                        </Button>
-                        <Button onClick={goToAddServicePage} className="flex text-base">
-                            <Plus /> <span className="hidden md:flex">Add Service</span>
-                        </Button>
-                    </div>
-                ) : (
-                    <select
-                        name=""
-                        id=""
-                        defaultValue="DEFAULT"
-                        className="p-2 min-w-[20rem] border border-dark rounded-2xl text-lg"
+                <div className="flex gap-2">
+                    <Button
+                        onClick={toggleEditingMode}
+                        variant={isEditing ? 'dark' : 'default'}
+                        className="flex text-base"
                     >
-                        <option value="DEFAULT" disabled>
-                            Filter by Clinic
-                        </option>
-                    </select>
+                        {isEditing ? 'Done' : 'Edit'}
+                    </Button>
+                    <Button onClick={goToAddServicePage} className="flex text-base">
+                        <Plus /> <span className="hidden md:flex">Add Service</span>
+                    </Button>
+                </div>
+            </section>
+
+            <section className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 place-items-stretch">
+                {loading ? (
+                    <p className="text-center">Loading services...</p>
+                ) : error ? (
+                    <p className="text-center text-red-500">Error: {error.message}</p>
+                ) : services.length === 0 ? (
+                    <p>No services available at this time.</p>
+                ) : (
+                    services.map((service, index) => (
+                        <ServiceCard
+                            key={service.id}
+                            index={index}
+                            isEditing={isEditing}
+                            userData={userData}
+                            service={service}
+                        />
+                    ))
                 )}
             </section>
-            {userData?.userType === userType1 ? (
-                <ClinicServicesView services={services} userData={userData} isEditing={isEditing} />
-            ) : (
-                <PatientServicesView userData={userData} clinics={clinics} loading={loading} error={error} />
-            )}
-        </div>
-    );
-}
-
-function ClinicServicesView({ services, userData, isEditing }) {
-    return (
-        <section className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 place-items-stretch">
-            {services.length === 0 ? (
-                <p>No services available at this time.</p>
-            ) : (
-                services.map((service) => (
-                    <ServiceCard key={service.id} isEditing={isEditing} userData={userData} service={service} />
-                ))
-            )}
-        </section>
+        </>
     );
 }
 
 ClinicServicesView.propTypes = {
     services: PropTypes.array.isRequired,
     userData: PropTypes.object,
-    isEditing: PropTypes.bool.isRequired,
+    loading: PropTypes.bool.isRequired,
+    error: PropTypes.object,
 };
 
 function PatientServicesView({ userData, clinics, loading, error }) {
+    const [category, setCategory] = useState('');
+
+    const [expandedClinics, setExpandedClinics] = useState({});
+
+    useEffect(() => {
+        if (clinics.length > 0) {
+            const initialExpanded = clinics.reduce((acc, clinic) => {
+                acc[clinic[0].clinicId] = true; // Open by default
+                return acc;
+            }, {});
+            setExpandedClinics(initialExpanded);
+        }
+    }, [clinics]); // Runs only when `clinics` changes
+
+    // Function to toggle clinic visibility
+    const toggleClinic = (clinicId) => {
+        setExpandedClinics((prev) => ({
+            ...prev,
+            [clinicId]: !prev[clinicId],
+        }));
+    };
+
     return (
-        <section>
-            {loading ? (
-                <p className="text-center">Loading services...</p>
-            ) : error ? (
-                <p className="text-center text-red-500">Error: {error.message}</p>
-            ) : Object.keys(clinics).length === 0 ? (
-                <p>No services available at this time.</p>
-            ) : (
-                clinics.map((clinic) => (
-                    <div key={clinic[0].clinicId} className="mb-8">
-                        <ClinicTitleView key={clinic[0].clinicId} clinicName={clinic[0].clinic_name} />
-                        <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 place-items-stretch">
-                            {clinic.map((service) => (
-                                <ServiceCard key={service.id} userData={userData} service={service} />
+        <>
+            <section className="w-full flex justify-between items-start sm:items-center py-4">
+                {/* <p className="text-2xl">Services</p> */}
+                <PageTitle className="w-fit" pageTitle="Services" />
+
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                    <p className="">Filter by clinic</p>
+                    <select
+                        name="clinic-type"
+                        id="clinic-type"
+                        // defaultValue="DEFAULT"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="px-2 py-2 text-xs sm:text-sm w-fit border border-dark"
+                    >
+                        <option key="default" value="">
+                            All
+                        </option>
+
+                        {Object.keys(clinicTypes)
+                            .sort((a, b) => clinicTypes[a].localeCompare(clinicTypes[b]))
+                            .map((clinicType) => (
+                                <option key={clinicType} value={clinicType}>
+                                    {clinicTypes[clinicType]}
+                                </option>
                             ))}
-                        </div>
-                    </div>
-                ))
-            )}
-        </section>
+                    </select>
+                </div>
+            </section>
+            <section>
+                {loading ? (
+                    <p className="text-center">Loading services...</p>
+                ) : error ? (
+                    <p className="text-center text-red-500">Error: {error.message}</p>
+                ) : Object.keys(clinics).length === 0 ? (
+                    <p>No services available at this time.</p>
+                ) : (
+                    clinics.map((clinic) => {
+                        const clinicId = clinic[0].clinicId;
+                        const clinicName = clinic[0].clinicName;
+
+                        return (
+                            <div key={clinicId} className="mb-8 bg-slate-50">
+                                {/* Clickable Clinic Title */}
+                                <div
+                                    onClick={() => toggleClinic(clinicId)}
+                                    className="cursor-pointer bg-normal flex px-4 py-2 justify-between items-center"
+                                >
+                                    <ClinicTitleView clinicName={clinicName} />
+                                    <span className="text-dark">
+                                        {expandedClinics[clinicId] ? <ChevronUp /> : <ChevronDown />}
+                                    </span>
+                                </div>
+                                {/* Show services if clinic is expanded */}
+                                {expandedClinics[clinicId] && (
+                                    <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 place-items-stretch mt-4">
+                                        {clinic.map((service, index) => (
+                                            <ServiceCard
+                                                key={service.id}
+                                                index={index}
+                                                userData={userData}
+                                                service={service}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })
+                )}
+            </section>
+        </>
     );
 }
 
@@ -122,14 +222,14 @@ PatientServicesView.propTypes = {
 };
 
 function ClinicTitleView({ clinicName }) {
-    return <h3 className="text-xl font-bold mb-4">Clinic: {clinicName}</h3>;
+    return <h3 className="text-base sm:text-lg md:text-xl font-semibold">Clinic: {clinicName}</h3>;
 }
 
 ClinicTitleView.propTypes = {
     clinicName: PropTypes.string.isRequired,
 };
 
-function ServiceCard({ isEditing, userData, service, className, ...props }) {
+function ServiceCard({ index, isEditing, userData, service, className, ...props }) {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
@@ -138,7 +238,11 @@ function ServiceCard({ isEditing, userData, service, className, ...props }) {
     const db = getDatabase();
 
     function handleBookNow() {
-        navigate(bookingPath, { state: { selectedService: service } });
+        navigate(bookingPath, { state: { selectedService: convertKeysToCamelCase(service) } });
+    }
+
+    function goToServiceDetails() {
+        navigate(serviceDetailsPath, { state: { selectedService: convertKeysToCamelCase(service) } });
     }
 
     async function removeService() {
@@ -164,26 +268,35 @@ function ServiceCard({ isEditing, userData, service, className, ...props }) {
         }
     }
 
+    useEffect(() => {
+        console.log('SERVICE IS:', service);
+    }, [service]);
+
     return (
         <div {...props} className={twMerge('', className)}>
-            <div className="w-full flex items-end bg-normal h-[18rem]">
-                <div className="w-full h-[16rem] overflow-hidden">
-                    <img className="w-full h-full object-cover" src={clinic1} alt="service image" />
+            <section onClick={goToServiceDetails} className="cursor-pointer">
+                <div className="w-full flex items-end bg-normal h-[18rem]">
+                    <div className="w-full h-[16rem] overflow-hidden">
+                        <LazyLoadImage
+                            className="w-full h-full object-cover"
+                            src={convertKeysToCamelCase(service)?.imageUrl}
+                            alt={`service-img-${index}`}
+                            width={'100%'}
+                            height={'100%'}
+                            placeholderSrc={loadingImage}
+                        />
+                    </div>
                 </div>
-            </div>
-            <p className="p-2 bg-normal">{service?.name}</p>
+                <p className="p-2 bg-normal">{service?.name}</p>
 
-            <div
-                className={`text-center ${
-                    !isEditing && userData !== null && userData.userType ? 'border-[1.2px] border-dark mt-3' : 'py-2'
-                }`}
-            >
-                <p>By {service?.doctor}</p>
-                <p>
-                    ${parseFloat(service?.price).toFixed(2)} | {(parseInt(service?.duration) / 60).toFixed(2)}hrs
-                </p>
-                <p>*****</p>
-            </div>
+                <div className="text-center bg-white py-2 border-[0.1px] border-dark">
+                    <p>By {service?.doctor}</p>
+                    <p>
+                        ${parsePrice(service?.price)} | {convertMinutesToHours(service?.duration)}hrs
+                    </p>
+                    {/* <p>*****</p> */}
+                </div>
+            </section>
 
             {isEditing && userData?.userType == userType1 && (
                 <Button onClick={removeService} className="w-full" variant="hot">
@@ -201,16 +314,9 @@ function ServiceCard({ isEditing, userData, service, className, ...props }) {
 }
 
 ServiceCard.propTypes = {
+    index: PropTypes.number.isRequired,
     isEditing: PropTypes.bool,
     userData: PropTypes.object,
-    service: PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        name: PropTypes.string.isRequired,
-        description: PropTypes.string.isRequired,
-        doctor: PropTypes.string.isRequired,
-        price: PropTypes.number.isRequired,
-        duration: PropTypes.number.isRequired,
-        slots: PropTypes.object.isRequired,
-    }).isRequired,
+    service: PropTypes.object.isRequired,
     className: PropTypes.string,
 };

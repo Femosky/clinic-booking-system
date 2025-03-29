@@ -62,55 +62,55 @@ export function useClinicAppointments() {
         getPastAppointments();
     }, [db, userData]);
 
-    useEffect(() => {
-        async function getAppointments() {
-            if (userData === null) {
+    async function getAppointments() {
+        if (userData === null) {
+            return;
+        }
+
+        try {
+            const clinicId = userData.userId;
+
+            if (clinicId === null) {
                 return;
             }
 
-            try {
-                const clinicId = userData.userId;
+            const appointmentRef = ref(db, `appointments/${clinicId}`);
+            const snapshot = await get(appointmentRef);
 
-                if (clinicId === null) {
-                    return;
-                }
+            if (snapshot.exists()) {
+                const data = snapshot.val();
 
-                const appointmentRef = ref(db, `appointments/${clinicId}`);
-                const snapshot = await get(appointmentRef);
+                let tempAppointments = [];
 
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
+                Object.keys(data).forEach((appointmentId) => {
+                    const appointmentData = convertKeysToCamelCase(data[appointmentId]);
+                    const appointment = {
+                        appointmentId,
+                        ...appointmentData,
+                    };
 
-                    let tempAppointments = [];
+                    tempAppointments.push(appointment);
 
-                    Object.keys(data).forEach((appointmentId) => {
-                        const appointmentData = convertKeysToCamelCase(data[appointmentId]);
-                        const appointment = {
-                            appointmentId,
-                            ...appointmentData,
-                        };
+                    console.log('DATA', snapshot.val());
+                });
 
-                        tempAppointments.push(appointment);
-
-                        console.log('DATA', snapshot.val());
-                    });
-
-                    setAppointments(tempAppointments);
-                    console.log('APPOINTMENTS', tempAppointments);
-                } else {
-                    console.log('No appointments available for this user.');
-                    setError('No appointments available for this user.');
-                }
-            } catch (err) {
-                console.log('Error getting all appointments: ', err.message);
-                setError(err.message);
-            } finally {
-                setLoading(false);
+                setAppointments(tempAppointments);
+                console.log('APPOINTMENTS', tempAppointments);
+            } else {
+                console.log('No appointments available for this user.');
+                setError('No appointments available for this user.');
             }
+        } catch (err) {
+            console.log('Error getting all appointments: ', err.message);
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
+    }
 
+    useEffect(() => {
         getAppointments();
     }, [db, userData]);
 
-    return { appointments, pastAppointments, loading, error };
+    return { appointments, pastAppointments, getAppointments, loading, error };
 }

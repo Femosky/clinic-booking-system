@@ -12,6 +12,7 @@ import { ServicesPage } from './pages/ServicesPage';
 import { Contact } from './pages/Contact';
 import { Register } from './pages/Register';
 import {
+    aboutPath,
     addServicePath,
     appointmentDetailsPath,
     bookingPath,
@@ -23,6 +24,7 @@ import {
     PAGE_MAX_WIDTH,
     registerPath,
     resetPasswordPath,
+    serviceDetailsPath,
     servicesPath,
 } from './global/global_variables';
 import { twMerge } from 'tailwind-merge';
@@ -38,6 +40,8 @@ import { useUserData } from './hooks/useUserData';
 import { UserDataProvider } from './contexts/UserDataProvider';
 import { LogoLoadingScreen } from './components/LogoLoadingScreen';
 import { AppointmentDetails } from './pages/AppointmentDetails';
+import { AboutUs } from './pages/AboutUs';
+import { ServiceDetails } from './pages/ServiceDetails';
 
 function App() {
     return (
@@ -57,7 +61,9 @@ function AppContent() {
                 <div className="w-full my-10 flex flex-col items-center">
                     <Routes>
                         <Route path={servicesPath} element={<ServicesPage />} />
+                        <Route path={serviceDetailsPath} element={<ServiceDetails />} />
                         <Route path={contactPath} element={<Contact />} />
+                        <Route path={aboutPath} element={<AboutUs />} />
                         <Route element={<PublicRoutes />}>
                             {/* <Route path={homePath} element={<Homepage />} /> */}
                             <Route path={loginPath} element={<Login />} />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getDatabase, ref, onValue } from 'firebase/database';
+import { convertKeysToCamelCase } from '../global/global_methods';
 
 export function useAllServices() {
     const [clinics, setClinics] = useState([]);
@@ -26,13 +27,16 @@ export function useAllServices() {
                         const servicesArray = Object.keys(servicesForClinic).map((serviceId) => ({
                             id: serviceId,
                             clinicId, // include the clinic id for reference
-                            ...servicesForClinic[serviceId],
+                            ...convertKeysToCamelCase(servicesForClinic[serviceId]),
                         }));
+
+                        console.log('ARRAAYAYYY:', servicesArray);
 
                         clinicsArray.push(servicesArray);
                     });
 
                     setClinics(clinicsArray);
+                    console.log('IT IS', clinicsArray);
                 } else {
                     setClinics([]);
                 }

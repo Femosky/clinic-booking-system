@@ -8,29 +8,52 @@ import PropTypes from 'prop-types';
 import { useCart } from '../hooks/useCart';
 import { useEffect, useState } from 'react';
 import { useUserData } from '../hooks/useUserData';
-import { calculateTax } from '../global/tax';
+import { calculateTax, provinceTotalTaxPercentage } from '../global/tax';
 import { ErrorMessageView } from '../components/ErrorMessageView';
 import { Input } from '../components/Input';
 import { stockCardNumber, stockCVV, stockDate, stockName, userType1 } from '../global/global_variables';
-import { isValidCardExpiryDate, isValidCardNumber } from '../global/global_methods';
+import {
+    convertKeysToSnakeCase,
+    getReservedEmailForDoctor,
+    getReservedEmailForPatient,
+    isUndefined,
+    isValidCardExpiryDate,
+    isValidCardNumber,
+    sendEmailNotificationUpdate,
+} from '../global/global_methods';
 import { CartItem } from '../components/CartItem';
-import { getDatabase, push, ref, set } from 'firebase/database';
+import { get, getDatabase, push, ref, set } from 'firebase/database';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/firebase';
 import { useNavigate } from 'react-router-dom';
 import { LogoLoadingScreen } from '../components/LogoLoadingScreen';
 
 export function Checkout() {
-    const { cart } = useCart();
+    const { cart, setCart } = useCart();
     const navigate = useNavigate();
     const { userData } = useUserData();
+
+    const db = getDatabase();
+
+    const [error, setError] = useState('');
+    const [isButtonDisabled, setIsButtonDisabled] = useState(true);
 
     useEffect(() => {
         if (userData !== null && userData.userType === userType1) {
             // Navigate back to the previous page
             navigate(-1);
         }
+
+        console.log(cart);
     }, [userData, navigate]);
+
+    useEffect(() => {
+        if (cart && cart.length > 0) {
+            setIsButtonDisabled(false);
+        } else {
+            setIsButtonDisabled(true);
+        }
+    }, [cart]);
 
     if (userData === null) {
         return <LogoLoadingScreen />;
@@ -40,9 +63,204 @@ export function Checkout() {
         return <LogoLoadingScreen />;
     }
 
+    async function checkValidCartItems() {
+        // Handle payment logic
+
+        setError('');
+
+        if (cart === null && cart.length < 1) {
+            return;
+        }
+
+        let tempCart = [...cart];
+
+        tempCart = tempCart.filter((cartItem) => {
+            const result = cartItem.taken;
+            return !result;
+        });
+
+        let validCartNumber = tempCart.length;
+
+        // tempCart.forEach((item, i) => {
+        //     if (i === 0) {
+        //         tempCart[i]['taken'] = true;
+        //     }
+        // });
+
+        // setCart(tempCart);
+        // return;
+
+        let preparedCheckoutItems = await Promise.all(
+            tempCart.map(async (cartItem, index) => {
+                // cart.forEach(async (cartItem) => {
+                const clinicId = cartItem.bookingDetails.clinicId;
+                const serviceId = cartItem.bookingDetails.serviceId;
+                const slotId = cartItem.bookingDetails.slot.slotId;
+
+                // Check if the slot is still available
+                try {
+                    const reservationRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
+                    const availableData = await get(reservationRef);
+
+                    if (availableData.val() === false) {
+                        // IF SLOT IS NO LONGER AVAILABLE, MARK IT AS INVALID IN THE CART
+                        let tempCart = [...cart];
+                        tempCart[index]['taken'] = true;
+                        setCart(tempCart);
+                        setError(`${cartItem.bookingDetails.serviceName} service is no longer available.`);
+                        console.log(cart[index]);
+                        return null;
+                    } else {
+                        return cartItem;
+                    }
+                } catch (err) {
+                    console.log(err.message);
+                    setError(err.message);
+                    return null;
+                }
+            })
+        );
+
+        preparedCheckoutItems = preparedCheckoutItems.filter((checkoutItem) => checkoutItem !== null);
+
+        console.log(preparedCheckoutItems);
+        console.log('VALID', validCartNumber);
+
+        return [preparedCheckoutItems, validCartNumber];
+    }
+
+    async function handleReservation() {
+        const result = await checkValidCartItems();
+        const preparedCheckoutItems = result[0];
+        const validCartNumber = result[1];
+
+        if (preparedCheckoutItems.length === validCartNumber) {
+            // IS VALID
+
+            const patientId = userData.userId;
+            if (patientId === null) {
+                return;
+            }
+
+            for (let i = 0; i < preparedCheckoutItems.length; i++) {
+                const cartItem = preparedCheckoutItems[i];
+
+                const clinicId = cartItem.bookingDetails.clinicId;
+                const serviceId = cartItem.bookingDetails.serviceId;
+                const slotId = cartItem.bookingDetails.slot.slotId;
+
+                const clinicEmail = cartItem.bookingDetails.clinicEmail;
+                const patientEmail = cartItem.patientData.email;
+                const clinicName = cartItem.bookingDetails.clinicName;
+                const patientName = cartItem.patientData.fullname;
+                const doctorEmail = cartItem.bookingDetails.doctorEmail;
+                const doctorName = cartItem.bookingDetails.doctor;
+
+                const serviceName = cartItem.bookingDetails.serviceName;
+                const duration = cartItem.bookingDetails.duration;
+                const appointmentTime = cartItem.bookingDetails.slot.timestamp;
+
+                if (
+                    isUndefined(clinicId) ||
+                    isUndefined(serviceId) ||
+                    isUndefined(slotId) ||
+                    isUndefined(serviceName) ||
+                    isUndefined(duration) ||
+                    isUndefined(appointmentTime) ||
+                    isUndefined(clinicId) ||
+                    isUndefined(clinicEmail) ||
+                    isUndefined(patientEmail) ||
+                    isUndefined(clinicName) ||
+                    isUndefined(patientName) ||
+                    isUndefined(doctorEmail) ||
+                    isUndefined(doctorName)
+                ) {
+                    console.log('Missing paramaters.');
+                    setError('Missing paramaters.');
+                    continue;
+                }
+
+                try {
+                    const appointmentRef = ref(db, `appointments/${clinicId}`);
+                    const appointmentResult = await push(appointmentRef, convertKeysToSnakeCase(cartItem));
+
+                    if (appointmentResult === null) {
+                        setError('Error reserving appointment: cannot push cartItem to the database');
+                        continue;
+                    }
+
+                    const appointmentID = appointmentResult.key;
+                    const patientRegistryRef = ref(db, `patients/${patientId}/appointments/${appointmentID}`);
+                    const reservationRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
+
+                    await set(patientRegistryRef, {
+                        clinic_id: clinicId,
+                        timestamp: Date.now(),
+                    });
+
+                    const hell0 = await set(reservationRef, true);
+                    console.log('HELLOOOOD', hell0);
+
+                    // SEND CONFIRMATION EMAILS
+
+                    const messagePatient = getReservedEmailForPatient(
+                        serviceName,
+                        doctorName,
+                        clinicName,
+                        duration,
+                        appointmentTime
+                    );
+
+                    const messageDoctor = getReservedEmailForDoctor(
+                        serviceName,
+                        patientName,
+                        clinicName,
+                        duration,
+                        appointmentTime
+                    );
+
+                    // Email to Patient
+                    const resultPatient = sendEmailNotificationUpdate(
+                        clinicEmail,
+                        patientEmail,
+                        clinicName,
+                        patientName,
+                        doctorEmail,
+                        doctorName,
+                        messagePatient
+                    );
+
+                    // // Email to Doctor
+                    const resultDoctor = sendEmailNotificationUpdate(
+                        clinicEmail,
+                        doctorEmail,
+                        clinicName,
+                        doctorName,
+                        doctorEmail,
+                        doctorName,
+                        messageDoctor
+                    );
+
+                    // Remove the item from the cart
+                    let tempCart = [...cart];
+                    tempCart.filter((item) => {
+                        return JSON.stringify(item) !== JSON.stringify(cartItem);
+                    });
+                    setCart(tempCart);
+                } catch (err) {
+                    console.log(err.message);
+                    setError(err.message);
+                }
+            }
+        } else {
+            // IS NOT VALID
+            setError('An appointment has already been reserved');
+        }
+    }
+
     return (
-        <div className="w-full flex justify-between">
-            <section className="min-h-[40rem] w-3/4 px-5 flex flex-col justify-between">
+        <div className="w-full flex flex-col gap-10 justify-between">
+            <section className="min-h-[40rem] w-full flex flex-col justify-between">
                 <div>
                     <h2 className="text-2xl">Booking Summary</h2>
 
@@ -60,225 +278,16 @@ export function Checkout() {
                 <OrderSummaryView />
             </section>
 
-            <section className="w-1/4 flex flex-col justify-between bg-dark rounded-2xl px-2 py-6 gap-5">
-                <div className="w-full flex justify-between px-10">
-                    <img className="w-12" src={paypal} alt="paypal icon" />
-                    <img className="w-12" src={visa} alt="visa icon" />
-                    <img className="w-12" src={gpay} alt="google pay icon" />
-                    <img className="w-12" src={applePay} alt="apple pay icon" />
-                </div>
-
-                <CheckoutForm />
-            </section>
-        </div>
-    );
-}
-
-function CheckoutForm() {
-    const { cart, setCart } = useCart();
-    const [user] = useAuthState(auth);
-    const db = getDatabase();
-
-    const [cardNumber, setCardNumber] = useState('');
-    const [cardHolderName, setCardHolderName] = useState('');
-    const [expiryDate, setExpiryDate] = useState('');
-    const [cvv, setCvv] = useState('');
-    const [isButtonDisabled, setIsButtonDisabled] = useState(true);
-    const [error, setError] = useState(null);
-
-    function handleExpiryChange(event) {
-        let value = event.target.value.replace(/\D/g, ''); // Remove non-numeric characters
-
-        // Auto-insert slash after 2 digits
-        if (value.length >= 3) {
-            value = `${value.slice(0, 2)}/${value.slice(2, 4)}`;
-        }
-
-        // Limit to MM/YY format (5 characters total)
-        if (value.length > 5) return;
-
-        setExpiryDate(value);
-    }
-
-    function handleCardNumberChange(event) {
-        let value = event.target.value.replace(/\D/g, ''); // Remove non-numeric characters
-
-        // Auto-insert dashes every 4 digits
-        value = value.replace(/(.{4})/g, '$1-').trim();
-
-        // Remove trailing dash if present
-        if (value.endsWith('-')) {
-            value = value.slice(0, -1);
-        }
-
-        // Limit to 19 characters (16 digits + 3 dashes)
-        if (value.length > 19) return;
-
-        console.log(value);
-
-        setCardNumber(value);
-    }
-
-    function areInputsValid() {
-        if (!isValidCardNumber(cardNumber)) {
-            setError('Invalid card number.');
-            return false;
-        }
-
-        if (cardHolderName.length === 0) {
-            setError('Enter your card name.');
-            return false;
-        } else if (cardHolderName.length < 2) {
-            setError('Enter a valid card name.');
-            return false;
-        }
-
-        if (!isValidCardExpiryDate(expiryDate)) {
-            setError('Enter a valid expiry date.');
-            return false;
-        }
-
-        if (cvv.length !== 3) {
-            setError('Enter your card cvv number.');
-            return false;
-        }
-
-        setError('');
-        return true;
-    }
-
-    function clearInputs() {
-        setCardNumber('');
-        setCardHolderName('');
-        setExpiryDate('');
-        setCvv('');
-    }
-
-    async function handlePayment() {
-        // Handle payment logic
-
-        if (!areInputsValid()) {
-            return;
-        }
-
-        if (cart === null && cart.length < 1) {
-            return;
-        }
-
-        const patientId = user.uid;
-        if (patientId === null) {
-            return;
-        }
-
-        cart.forEach(async (cartItem) => {
-            const clinicId = cartItem.booking_details.clinic_id;
-
-            try {
-                const appointmentRef = ref(db, `appointments/${clinicId}`);
-                const appointmentResult = await push(appointmentRef, cartItem);
-
-                if (appointmentResult === null) {
-                    return;
-                }
-
-                const appointmentID = appointmentResult.key;
-                const patientRegistryRef = ref(db, `patients/${patientId}/appointments/${appointmentID}`);
-
-                await set(patientRegistryRef, {
-                    clinic_id: clinicId,
-                    timestamp: Date.now(),
-                });
-
-                // Clean the cart
-                setCart([]);
-                clearInputs();
-            } catch (err) {
-                console.log(err.message);
-                setError(err.message);
-            }
-        });
-    }
-
-    useEffect(() => {
-        if (cart && cart.length > 0) {
-            setIsButtonDisabled(false);
-        } else {
-            setIsButtonDisabled(true);
-        }
-    }, [cart]);
-
-    return (
-        <div className="flex flex-col justify-between h-full">
-            <form onSubmit={handlePayment}>
-                <div>
-                    <h3 className="text-lg text-white">Card number</h3>
-                    <Input
-                        size="round"
-                        type="text"
-                        value={cardNumber}
-                        onChange={handleCardNumberChange}
-                        name="card-number"
-                        id="card-number"
-                        placeholder={stockCardNumber}
-                        required
-                    />
-                </div>
-                <div>
-                    <h3 className="text-lg text-white">Name on card</h3>
-                    <Input
-                        size="round"
-                        type="text"
-                        value={cardHolderName}
-                        onChange={(e) => setCardHolderName(e.target.value)}
-                        name="card-holder-name"
-                        id="card-holder-name"
-                        placeholder={stockName}
-                        required
-                    />
-                </div>
-
-                <div className="flex gap-5">
-                    <div>
-                        <h3 className="text-lg text-white">Card Number</h3>
-                        <Input
-                            size="round"
-                            type="text"
-                            value={expiryDate}
-                            onChange={handleExpiryChange}
-                            name="expiry-date"
-                            id="expiry-date"
-                            placeholder={stockDate}
-                            maxLength={5}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <h3 className="text-lg text-white">Card Number</h3>
-                        <Input
-                            size="round"
-                            type="text"
-                            value={cvv}
-                            onChange={(e) => setCvv(e.target.value)}
-                            name="cvv"
-                            id="cvv"
-                            placeholder={stockCVV}
-                            maxLength={3}
-                            required
-                        />
-                    </div>
-                </div>
-
-                <ErrorMessageView error={error} />
-            </form>
+            {error && <ErrorMessageView error={error} />}
 
             <Button
-                onClick={handlePayment}
+                onClick={handleReservation}
                 className={`w-full ${isButtonDisabled && 'cursor-default'}`}
                 variant={isButtonDisabled ? 'disabled' : 'default'}
                 disabled={isButtonDisabled}
                 size="round"
             >
-                Make Payment
+                Make Reservation Request
             </Button>
         </div>
     );
@@ -286,45 +295,44 @@ function CheckoutForm() {
 
 function OrderSummaryView() {
     const { cart } = useCart();
+    const [validCartItemsCount, setValidCartItemsCount] = useState(0);
+    const [provinceTax, setProvinceTax] = useState(null);
     const [total, setTotal] = useState(0.0);
     const [grandTotal, setGrandTotal] = useState(0.0);
     const { userData } = useUserData();
-    const [deliveryFee, setDeliveryFee] = useState(0);
     const [tax, setTax] = useState(0);
 
-    const province = 'ab';
-
-    function calculateDelivery() {
-        return 10.0;
-    }
-
     useEffect(() => {
-        function calculateGrandTotal(tempDeliveryFee, tempTax, tempTotal) {
+        function calculateGrandTotal(tempTax, tempTotal) {
             const discount = userData?.discount ? userData.discount : 0.0;
 
-            return discount + tempDeliveryFee + tempTax + tempTotal;
+            return discount + tempTax + tempTotal;
         }
 
-        const tempTotal = cart.reduce((acc, cartItem) => acc + parseFloat(cartItem.booking_details.price), 0.0);
+        let tempCart = [...cart];
+        tempCart = tempCart.filter((item) => item.taken === false);
+        setValidCartItemsCount(tempCart.length);
+
+        const tempTotal = tempCart.reduce((acc, cartItem) => acc + parseFloat(cartItem.bookingDetails.price), 0.0);
 
         setTotal(tempTotal);
 
-        let tempDeliveryFee = cart.length > 0 ? calculateDelivery() : 0.0;
-        setDeliveryFee(tempDeliveryFee);
-
-        if (tempTotal < 0) {
+        if (cart.length < 1) {
             return;
         }
 
-        let tempTax = calculateTax(province, tempTotal);
+        let tempProvince = tempCart[0].bookingDetails.clinicProvince;
+        setProvinceTax(tempProvince);
+
+        let tempTax = calculateTax(tempProvince, tempTotal);
         setTax(tempTax);
 
-        let tempGrandTotal = calculateGrandTotal(tempDeliveryFee, tempTax, tempTotal);
+        let tempGrandTotal = calculateGrandTotal(tempTax, tempTotal);
         setGrandTotal(tempGrandTotal);
     }, [cart, userData]);
 
     return (
-        <div className="w-full flex flex-col gap-4 bg-normal rounded-2xl px-10 py-2">
+        <div className="w-full flex flex-col gap-4 bg-normal rounded-2xl text-sm sm:text-base px-4 md:px-10 py-2">
             <section>Order Summary</section>
 
             <section>
@@ -338,21 +346,14 @@ function OrderSummaryView() {
 
                     <li>
                         <div className="w-full flex justify-between">
-                            <p>Delivery</p>
-                            <p>${deliveryFee.toFixed(2)}</p>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div className="w-full flex justify-between">
-                            <p>Estimated taxes</p>
+                            <p>Estimated taxes (~{provinceTotalTaxPercentage[provinceTax]}%)</p>
                             <p>${tax.toFixed(2)}</p>
                         </div>
                     </li>
 
                     <li>
                         <div className="w-full flex justify-between">
-                            <p>{`Items total count (${cart.length})`}</p>
+                            <p>{`Valid Items total count (${validCartItemsCount})`}</p>
                             <p>${total.toFixed(2)}</p>
                         </div>
                     </li>
@@ -367,6 +368,13 @@ function OrderSummaryView() {
                     <p>${grandTotal.toFixed(2)}</p>
                 </div>
             </section>
+
+            {validCartItemsCount > 0 && (
+                <p className="text-center italic text-xs text-amber-700">
+                    Please note that you will be required to pay the estimated listed total above in person (*subject to
+                    change)
+                </p>
+            )}
         </div>
     );
 }

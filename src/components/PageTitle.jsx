@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 export function PageTitle({ pageTitle, className, ...props }) {
     return (
-        <h1 {...props} className={twMerge('w-full text-dark text-2xl', className)}>
+        <h1 {...props} className={twMerge('w-full text-dark text-2xl md:text-3xl lg:text-4xl', className)}>
             {pageTitle}
         </h1>
     );

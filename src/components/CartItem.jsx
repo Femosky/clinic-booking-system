@@ -8,6 +8,7 @@ import trash from '../assets/remove-or-delete-black-circle-20731 5.png';
 import PropTypes from 'prop-types';
 import { Button } from './Button';
 import { ErrorMessageView } from './ErrorMessageView';
+import { formatToDayDateMonthYear } from '../global/global_methods';
 
 export function CartItem({ cartItem, index }) {
     const navigate = useNavigate();
@@ -68,26 +69,63 @@ export function CartItem({ cartItem, index }) {
     }
 
     return (
-        <div className="w-full flex px-10 py-2 items-center justify-between bg-normal rounded-2xl">
-            <section>
-                <img className="w-20" src={heart} alt="cart item icon" />
+        <div className="relative w-full flex flex-col md:flex-row px-4 md:px-10 py-4 md:py-2 gap-4 justify-center md:items-center md:justify-between bg-normal rounded-2xl">
+            {/* Gray Overlay when the cart item is taken */}
+            {cartItem.taken && (
+                <>
+                    <div className="absolute inset-0 z-10 flex justify-center bg-gray-500 opacity-50 rounded-2xl pointer-events-none">
+                        <p className="text-xs sm:text-sm lg:text-base text-white font-medium z-100">
+                            This appointment slot is no longer available.
+                        </p>
+                    </div>
+                </>
+            )}
+
+            <section
+                className={`w-full flex gap-4 md:items-center md:justify-between ${cartItem.taken && 'pt-1 sm:pt-4'}`}
+            >
+                <div className="flex items-center">
+                    <img className="min-w-16 w-20" src={heart} alt="cart item icon" />
+                </div>
+
+                <div className="w-full flex flex-col md:flex-row md:justify-between text-sm md:text-base">
+                    <div className="flex justify-between">
+                        <p className="flex md:hidden font-medium">Time:</p>
+                        <p>{formatToDayDateMonthYear(cartItem.bookingDetails.slot.timestamp)}</p>
+                    </div>
+
+                    <div className="flex justify-between">
+                        <p className="flex md:hidden font-medium">Service:</p>
+                        <p>{cartItem.bookingDetails.serviceName}</p>
+                    </div>
+
+                    <div className="flex justify-between">
+                        <p className="flex md:hidden font-medium">Doctor:</p>
+                        <p>{cartItem.bookingDetails.doctor}</p>
+                    </div>
+
+                    <div className="flex justify-between">
+                        <p className="flex md:hidden font-medium">Price:</p>
+                        <p>${parseFloat(cartItem.bookingDetails.price).toFixed(2)}</p>
+                    </div>
+                </div>
             </section>
 
-            <section className="w-full px-20 flex justify-between">
-                <p>{cartItem.booking_details.service_name}</p>
-                <p>{cartItem.booking_details.doctor}</p>
-                <p>${parseFloat(cartItem.booking_details.price).toFixed(2)}</p>
-            </section>
-
-            <section className="flex">
-                <Button onClick={() => editBooking(index)} variant="clear" size="round">
-                    <img src={pen} alt="edit cart item icon" />
+            <section className="flex items-center place-self-center gap-5 w-fit">
+                <Button
+                    className={`h-full ${cartItem.taken && 'cursor-default'}`}
+                    disabled={cartItem.taken}
+                    onClick={() => editBooking(index)}
+                    variant="clear"
+                    size="round"
+                >
+                    <img className="w-10" src={pen} alt="edit cart item icon" />
                 </Button>
-                <Button onClick={() => removeCartItem(index)} variant="clear" size="round">
-                    <img src={trash} alt="delete cart item icon" />
+                <Button className="h-full" onClick={() => removeCartItem(index)} variant="clear" size="round">
+                    <img className="w-10" src={trash} alt="delete cart item icon" />
                 </Button>
             </section>
-            <ErrorMessageView error={error} />
+            {error && <ErrorMessageView className="text-center md:text-start" error={error} />}
         </div>
     );
 }

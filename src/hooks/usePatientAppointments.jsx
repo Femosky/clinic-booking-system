@@ -5,6 +5,7 @@ import { useUserData } from './useUserData';
 
 export function usePatientAppointments() {
     const [appointments, setAppointments] = useState([]);
+    const [pastAppointments, setPastAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { userData } = useUserData();
@@ -76,5 +77,5 @@ export function usePatientAppointments() {
         getAppointments();
     }, [db, userData]);
 
-    return { appointments, loading, error };
+    return { appointments, pastAppointments, loading, error };
 }

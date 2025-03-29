@@ -27,7 +27,7 @@ export function Dashboard() {
 
 function ClinicDashboardView() {
     const [totalAppointments, setTotalAppointments] = useState(0);
-    const { appointments, pastAppointments, loading } = useClinicAppointments();
+    const { appointments, pastAppointments, loading, getAppointments } = useClinicAppointments();
 
     const [selectedItem, setSelectedItem] = useState(0);
 
@@ -81,6 +81,7 @@ function ClinicDashboardView() {
                 pastAppointments={pastAppointments}
                 confirmedAppointments={confirmedAppointments}
                 pendingAppointments={pendingAppointments}
+                getAppointments={getAppointments}
                 selectedItem={selectedItem}
             />
         </div>
@@ -138,7 +139,7 @@ function ClinicSummaryView({
     }, [appointments, confirmedAppointments, pendingAppointments, setTotalAppointments]);
 
     return (
-        <div className="w-full flex justify-between gap-10">
+        <div className="w-full flex flex-col md:flex-row justify-between gap-2 md:gap-10">
             {items.map((itemName, index) => (
                 <SummaryItem
                     key={index}
@@ -190,7 +191,7 @@ function SummaryItem({
     return (
         <div
             onClick={() => toggleSummaryItem(index)}
-            className={`w-1/3 rounded-2xl p-5 ${
+            className={`w-full flex justify-between md:flex-col md:w-1/3 rounded-2xl px-5 py-2 md:p-5 ${
                 index === selectedItem
                     ? 'bg-dark text-normal hover:bg-dark-hover'
                     : 'bg-normal text-dark hover:bg-hover'
@@ -218,6 +219,7 @@ function ClinicAppointmentsView({
     pastAppointments,
     confirmedAppointments,
     pendingAppointments,
+    getAppointments,
     selectedItem,
 }) {
     return (
@@ -226,23 +228,31 @@ function ClinicAppointmentsView({
             {selectedItem === 0 && (
                 <div>
                     {appointments.length > 0 ? (
-                        <>
-                            {confirmedAppointments.length > 0 &&
-                                confirmedAppointments.map((appointment, index) => (
-                                    <div key={index} className="flex flex-col gap-5">
-                                        <Title2 title="Confirmed Bookings" />
-                                        <AppointmentItem appointmentItem={appointment} />
-                                    </div>
-                                ))}
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-5">
+                                <Title2 title="Confirmed Appointments" />
+                                {confirmedAppointments.length > 0 &&
+                                    confirmedAppointments.map((appointment, index) => (
+                                        <AppointmentItem
+                                            key={index}
+                                            appointmentItem={appointment}
+                                            getAppointments={getAppointments}
+                                        />
+                                    ))}
+                            </div>
 
-                            {pendingAppointments.length > 0 &&
-                                pendingAppointments.map((appointment, index) => (
-                                    <div key={index} className="flex flex-col gap-5">
-                                        <Title2 title="Pending Bookings" />
-                                        <AppointmentItem appointmentItem={appointment} />
-                                    </div>
-                                ))}
-                        </>
+                            <div className="flex flex-col gap-5">
+                                <Title2 title="Pending Appointments" />
+                                {pendingAppointments.length > 0 &&
+                                    pendingAppointments.map((appointment, index) => (
+                                        <AppointmentItem
+                                            key={index}
+                                            appointmentItem={appointment}
+                                            getAppointments={getAppointments}
+                                        />
+                                    ))}
+                            </div>
+                        </div>
                     ) : (
                         <span>No appointments</span>
                     )}
@@ -253,12 +263,18 @@ function ClinicAppointmentsView({
             {selectedItem === 1 && (
                 <div>
                     {confirmedAppointments.length > 0 ? (
-                        confirmedAppointments.map((appointment, index) => (
-                            <div key={index} className="flex flex-col gap-5">
-                                <Title2 title="Confirmed Bookings" />
-                                <AppointmentItem appointmentItem={appointment} />
+                        <>
+                            <div className="flex flex-col gap-5">
+                                <Title2 title="Confirmed Appointments" />
+                                {confirmedAppointments.map((appointment, index) => (
+                                    <AppointmentItem
+                                        key={index}
+                                        appointmentItem={appointment}
+                                        getAppointments={getAppointments}
+                                    />
+                                ))}
                             </div>
-                        ))
+                        </>
                     ) : (
                         <div>No confirmed appointments</div>
                     )}
@@ -269,15 +285,35 @@ function ClinicAppointmentsView({
             {selectedItem === 2 && (
                 <div>
                     {pendingAppointments.length > 0 ? (
-                        pendingAppointments.map((appointment, index) => (
-                            <div key={index} className="flex flex-col gap-5">
-                                <Title2 title="Pending Bookings" />
-                                <AppointmentItem appointmentItem={appointment} />
+                        <>
+                            <div className="flex flex-col gap-5">
+                                <Title2 title="Pending Appointments" />
+                                {pendingAppointments.map((appointment, index) => (
+                                    <AppointmentItem
+                                        key={index}
+                                        appointmentItem={appointment}
+                                        getAppointments={getAppointments}
+                                    />
+                                ))}
                             </div>
-                        ))
+                        </>
                     ) : (
                         <div>No pending appointments</div>
                     )}
+                </div>
+            )}
+
+            {/* Past Appointments */}
+            {pastAppointments.length > 0 && (
+                <div>
+                    <>
+                        <div className="flex flex-col gap-5">
+                            <Title2 title="Pending Appointments" />
+                            {pastAppointments.map((appointment, index) => (
+                                <AppointmentItem key={index} appointmentItem={appointment} />
+                            ))}
+                        </div>
+                    </>
                 </div>
             )}
         </div>
@@ -289,11 +325,12 @@ ClinicAppointmentsView.propTypes = {
     pastAppointments: PropTypes.array.isRequired,
     confirmedAppointments: PropTypes.array.isRequired,
     pendingAppointments: PropTypes.array.isRequired,
+    getAppointments: PropTypes.func,
     selectedItem: PropTypes.number.isRequired,
 };
 
 function PatientDashboardView() {
-    const { appointments, loading } = usePatientAppointments();
+    const { appointments, pastAppointments, loading } = usePatientAppointments();
 
     const [confirmedAppointments, setConfirmedAppointments] = useState([]);
     const [pendingAppointments, setPendingAppointments] = useState([]);
@@ -324,6 +361,19 @@ function PatientDashboardView() {
             <PatientPendingBookings />
             <PatientUpcomingAppointments appointments={confirmedAppointments} />
             <PatientPendingAppointments appointments={pendingAppointments} />
+            {/* Past Appointments */}
+            {pastAppointments.length > 0 && (
+                <div>
+                    <>
+                        <div className="flex flex-col gap-5">
+                            <Title2 title="Pending Appointments" />
+                            {pastAppointments.map((appointment, index) => (
+                                <AppointmentItem key={index} appointmentItem={appointment} />
+                            ))}
+                        </div>
+                    </>
+                </div>
+            )}
         </div>
     );
 }
@@ -388,3 +438,7 @@ function PatientPendingAppointments({ appointments }) {
 PatientPendingAppointments.propTypes = {
     appointments: PropTypes.array.isRequired,
 };
+
+function PastAppointments() {
+    return <div>hi</div>;
+}

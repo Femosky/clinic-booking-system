@@ -5,6 +5,7 @@ import logo from '../assets/react.svg';
 import { Menu, ShoppingCartIcon, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import {
+    aboutPath,
     APP_NAME,
     bookingPath,
     contactPath,
@@ -55,6 +56,7 @@ function NavbarContent() {
     const isInBookingPage = pathname === bookingPath;
     const isInServicesPage = pathname === servicesPath;
     const isInContactPage = pathname === contactPath;
+    const isInAboutUsPage = pathname === aboutPath;
 
     const [isNavOpen, setIsNavOpen] = useState(false);
 
@@ -124,7 +126,7 @@ function NavbarContent() {
     }, []);
     return (
         <header className="mt-4 p-2 w-full flex flex-col gap-2">
-            <section className="w-full flex items-center justify-between">
+            <section className="w-full flex items-center gap-4 justify-between">
                 <LogoSection />
 
                 <NavItemsSection
@@ -133,18 +135,22 @@ function NavbarContent() {
                     isInBookingPage={isInBookingPage}
                     isInServicesPage={isInServicesPage}
                     isInContactPage={isInContactPage}
+                    isInAboutUsPage={isInAboutUsPage}
                 />
 
-                <Button className={`md:hidden ${isNavOpen && 'hidden'}`} onClick={toggleNav}>
-                    <Menu />
-                </Button>
+                <div className="flex gap-2">
+                    <CartIcon userData={userData} goToCheckout={goToCheckout} />
+
+                    <Button className={`md:hidden ${isNavOpen && 'hidden'}`} onClick={toggleNav}>
+                        <Menu />
+                    </Button>
+                </div>
 
                 <LogoutSection
                     classAdded="hidden md:flex"
                     userData={userData}
                     goToLogin={goToLogin}
                     goToRegister={goToRegister}
-                    goToCheckout={goToCheckout}
                     logout={logout}
                 />
             </section>
@@ -163,18 +169,47 @@ function NavbarContent() {
             {isNavOpen && (
                 <ClosedNavItemsSection
                     user={user}
+                    userData={userData}
                     closeNav={closeNav}
                     isInHomePage={isInHomePage}
                     isInServicesPage={isInServicesPage}
                     isInContactPage={isInContactPage}
+                    isInAboutUsPage={isInAboutUsPage}
                     goToLogin={goToLogin}
                     goToRegister={goToRegister}
+                    goToCheckout={goToCheckout}
                     logout={logout}
                 />
             )}
         </header>
     );
 }
+
+function CartIcon({ userData, goToCheckout }) {
+    const { cart } = useCart();
+
+    return (
+        <>
+            {userData && userData.userType === userType2 && (
+                <div className="relative max-w-30">
+                    {cart && cart.length > 0 && (
+                        <span className="absolute flex justify-center items-center top-0 right-0 z-0 w-fit px-2 rounded-full bg-red-500 text-xs text-white">
+                            {cart.length}
+                        </span>
+                    )}
+                    <Button onClick={goToCheckout} variant="transparent" size="round">
+                        <ShoppingCartIcon />
+                    </Button>
+                </div>
+            )}
+        </>
+    );
+}
+
+CartIcon.propTypes = {
+    userData: PropTypes.object,
+    goToCheckout: PropTypes.func.isRequired,
+};
 
 function LogoSection() {
     return (
@@ -217,23 +252,9 @@ LogoutButton.propTypes = {
     logout: PropTypes.func.isRequired,
 };
 
-function LogoutSection({ userData, classAdded, goToLogin, goToRegister, goToCheckout, logout }) {
-    const { cart } = useCart();
-
+function LogoutSection({ userData, classAdded, goToLogin, goToRegister, logout }) {
     return (
         <div className={twMerge('flex items-center gap-5', classAdded)}>
-            {userData && userData.userType === userType2 && (
-                <div className="relative max-w-30">
-                    {cart && cart.length > 0 && (
-                        <span className="absolute flex justify-center items-center top-0 right-0 z-0 w-fit px-2 rounded-full bg-red-500 text-xs text-white">
-                            {cart.length}
-                        </span>
-                    )}
-                    <Button onClick={goToCheckout} variant="transparent" size="round">
-                        <ShoppingCartIcon />
-                    </Button>
-                </div>
-            )}
             {!userData ? (
                 <LoginLinks goToLogin={goToLogin} goToRegister={goToRegister} />
             ) : (
@@ -248,11 +269,10 @@ LogoutSection.propTypes = {
     classAdded: PropTypes.string,
     goToLogin: PropTypes.func.isRequired,
     goToRegister: PropTypes.func.isRequired,
-    goToCheckout: PropTypes.func.isRequired,
     logout: PropTypes.func.isRequired,
 };
 
-function NavItemsSection({ user, isInHomePage, isInServicesPage, isInContactPage }) {
+function NavItemsSection({ user, isInHomePage, isInServicesPage, isInContactPage, isInAboutUsPage }) {
     return (
         <nav className="mx-auto flex items-end md:items-center justify-between md:gap-1 lg:gap-3 px-4 py-3 md:px-6">
             <ul className="hidden md:flex md:gap-10">
@@ -277,6 +297,13 @@ function NavItemsSection({ user, isInHomePage, isInServicesPage, isInContactPage
                 >
                     <Link to={contactPath}>Contact</Link>
                 </li>
+                <li
+                    className={`text-sm hover:text-normal transition-colors bg-secondary text-primary ${
+                        isInAboutUsPage && 'text-primary-hover font-medium'
+                    }`}
+                >
+                    <Link to={aboutPath}>About Us</Link>
+                </li>
             </ul>
         </nav>
     );
@@ -287,14 +314,17 @@ NavItemsSection.propTypes = {
     isInHomePage: PropTypes.bool.isRequired,
     isInServicesPage: PropTypes.bool.isRequired,
     isInContactPage: PropTypes.bool.isRequired,
+    isInAboutUsPage: PropTypes.bool.isRequired,
 };
 
 function ClosedNavItemsSection({
     user,
+    userData,
     closeNav,
     isInHomePage,
     isInServicesPage,
     isInContactPage,
+    isInAboutUsPage,
     goToLogin,
     goToRegister,
     logout,
@@ -329,10 +359,17 @@ function ClosedNavItemsSection({
                 >
                     <Link to={contactPath}>Contact</Link>
                 </li>
+                <li
+                    className={`text-lg text-primary hover:text-primary-hover transition-colors ${
+                        isInAboutUsPage && 'text-primary-hover font-medium'
+                    }`}
+                    onClick={closeNav}
+                >
+                    <Link to={aboutPath}>About Us</Link>
+                </li>
                 <li>
                     <LogoutSection
-                        class="flex"
-                        user={user}
+                        userData={userData}
                         goToLogin={goToLogin}
                         goToRegister={goToRegister}
                         logout={logout}
@@ -344,11 +381,13 @@ function ClosedNavItemsSection({
 }
 
 ClosedNavItemsSection.propTypes = {
-    user: PropTypes.object, // COME BACK TO THIS
+    user: PropTypes.object,
+    userData: PropTypes.object,
     closeNav: PropTypes.func.isRequired,
     isInHomePage: PropTypes.bool.isRequired,
     isInServicesPage: PropTypes.bool.isRequired,
     isInContactPage: PropTypes.bool.isRequired,
+    isInAboutUsPage: PropTypes.bool.isRequired,
     goToLogin: PropTypes.func.isRequired,
     goToRegister: PropTypes.func.isRequired,
     logout: PropTypes.func.isRequired,

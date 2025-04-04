@@ -23,7 +23,7 @@ export const cartLS = 'cart';
 
 // LINKS
 
-export const klinicWebsite = 'https://klinic.com';
+export const klinicWebsite = 'https://clinic-booking-system-hazel.vercel.app';
 export const femiAboutUsLink = 'https://femi-portfolio-gray.vercel.app';
 export const abhayaAboutUsLink = 'https://abhayaportfolio.netlify.app/';
 export const shyamaAboutUsLink = '';

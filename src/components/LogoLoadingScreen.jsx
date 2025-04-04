@@ -1,4 +1,4 @@
-import logo from '../assets/react.svg';
+import logo from '../assets/logo.png';
 
 export function LogoLoadingScreen() {
     return (

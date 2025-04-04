@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import logo from '../assets/react.svg';
+import logo from '../assets/logo.png';
 import { Menu, ShoppingCartIcon, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import {
@@ -215,8 +215,8 @@ function LogoSection() {
     return (
         <Link to="/">
             <div className="flex items-center gap-2">
-                <img src={logo} className="w-10 rounded-full" alt="logo" />
-                <h1 className="text-xl">{APP_NAME}</h1>
+                <img src={logo} className="w-[6rem] rounded-full" alt="logo" />
+                {/* <h1 className="text-xl">{APP_NAME}</h1> */}
             </div>
         </Link>
     );

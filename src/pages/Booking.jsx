@@ -8,9 +8,9 @@ import { ErrorMessageView } from '../components/ErrorMessageView';
 import { get, getDatabase, ref, set } from 'firebase/database';
 import { useCart } from '../hooks/useCart';
 import { useUserData } from '../hooks/useUserData';
-import { provinces, userType1 } from '../global/global_variables';
+import { checkoutPath, provinces, userType1 } from '../global/global_variables';
 import { LogoLoadingScreen } from '../components/LogoLoadingScreen';
-import { capitalize, formatToDayDateMonthYear, isValidEmail } from '../global/global_methods';
+import { capitalize, formatToDayDateMonthYear, isUndefined, isValidEmail } from '../global/global_methods';
 import { TextArea } from '../components/TextArea';
 
 export function Booking() {
@@ -69,20 +69,18 @@ export function Booking() {
                     slotId,
                     ...selectedService.slots[slotId],
                 };
-                tempSlots.push(slot);
+
+                if (slot.available) {
+                    tempSlots.push(slot);
+                }
             });
 
             tempSlots.sort((a, b) => {
                 const dateA = a.timestamp;
                 const dateB = b.timestamp;
-                console.log('DFBNSIUF', typeof a.timestamp);
 
                 return dateA - dateB;
             });
-
-            console.log('AAAAAAA', tempSlots);
-
-            console.log(selectedService);
 
             setSlots(tempSlots);
         }
@@ -158,6 +156,9 @@ export function Booking() {
                         <YourInformation
                             selectedService={selectedService}
                             selectedSlot={selectedSlot}
+                            slots={slots}
+                            setSlots={setSlots}
+                            toggleDateTime={toggleDateTime}
                             toggleYourInformation={toggleYourInformation}
                         />
                     )}
@@ -214,7 +215,7 @@ DateTime.propTypes = {
     error: PropTypes.string.isRequired,
 };
 
-function YourInformation({ selectedService, selectedSlot, toggleYourInformation }) {
+function YourInformation({ selectedService, selectedSlot, slots, setSlots, toggleDateTime, toggleYourInformation }) {
     const navigate = useNavigate();
     const db = getDatabase();
     const { userData } = useUserData();
@@ -292,14 +293,27 @@ function YourInformation({ selectedService, selectedSlot, toggleYourInformation 
                 doctorEmail: selectedService.doctorEmail,
                 duration: selectedService.duration,
                 price: selectedService.price,
-                imageUrl: selectedService.imageUrl,
+                imageUrl: selectedService.imageUrl ? selectedService.imageUrl : '',
                 slot: selectedSlot,
             },
         };
 
-        console.log('FIRST BOOKING ', booking);
-
         return booking;
+    }
+
+    function resetSlots(slotId) {
+        const tempSlots = [];
+
+        slots.forEach((slot) => {
+            if (slot.slotId !== slotId) {
+                tempSlots.push(slot);
+            }
+        });
+
+        setSlots(tempSlots);
+
+        // RETURN TO DATE AND TIME
+        toggleDateTime();
     }
 
     async function isBookingValid() {
@@ -318,14 +332,28 @@ function YourInformation({ selectedService, selectedSlot, toggleYourInformation 
                 console.log('Appointment does not exist.');
                 return;
             }
+
+            const isAvailable = reservationSnapshot.val().available;
+
+            if (isAvailable) {
+                const booking = getBookingDetails();
+                return booking;
+            } else {
+                setError('This appointment is no longer available.');
+                console.log('This appointment is no longer available.');
+
+                console.log(slotId);
+                console.log(slots);
+
+                resetSlots(slotId);
+
+                return;
+            }
         } catch (err) {
             console.log(err.message);
             setError(err.message);
             return;
         }
-
-        const booking = getBookingDetails();
-        return booking;
     }
 
     async function handleMakeBooking(event) {
@@ -339,8 +367,9 @@ function YourInformation({ selectedService, selectedSlot, toggleYourInformation 
 
         const booking = await isBookingValid();
 
+        console.log(booking);
         // Add to Cart
-        if (booking) {
+        if (!isUndefined(booking)) {
             if (selectedService.index != null) {
                 let newCart = [...cart];
                 newCart[selectedService.index] = booking;
@@ -357,7 +386,7 @@ function YourInformation({ selectedService, selectedSlot, toggleYourInformation 
         }
 
         // Proceed to Checkout
-        navigate('/checkout');
+        navigate(checkoutPath);
     }
 
     return (
@@ -431,5 +460,8 @@ function YourInformation({ selectedService, selectedSlot, toggleYourInformation 
 YourInformation.propTypes = {
     selectedService: PropTypes.object.isRequired,
     selectedSlot: PropTypes.object.isRequired,
+    slots: PropTypes.array.isRequired,
+    setSlots: PropTypes.func.isRequired,
+    toggleDateTime: PropTypes.func.isRequired,
     toggleYourInformation: PropTypes.func.isRequired,
 };

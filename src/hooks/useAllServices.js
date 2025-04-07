@@ -24,19 +24,36 @@ export function useAllServices() {
                         const servicesForClinic = data[clinicId];
 
                         // Convert the services object into an array
-                        const servicesArray = Object.keys(servicesForClinic).map((serviceId) => ({
-                            id: serviceId,
-                            clinicId, // include the clinic id for reference
-                            ...convertKeysToCamelCase(servicesForClinic[serviceId]),
-                        }));
+                        let servicesArray = Object.keys(servicesForClinic).map((serviceId) => {
+                            const service = {
+                                id: serviceId,
+                                clinicId, // include the clinic id for reference
+                                ...convertKeysToCamelCase(servicesForClinic[serviceId]),
+                            };
 
-                        console.log('ARRAAYAYYY:', servicesArray);
+                            // EXCLUDE INVALID SERVICES: services that all slots are now not available or equal to false
+                            let invalidCount = 0;
 
+                            let slots = Object.values(service.slots);
+
+                            slots.forEach((slot) => {
+                                if (slot.available === false) {
+                                    invalidCount += 1;
+                                }
+                            });
+
+                            if (invalidCount < slots.length) {
+                                return service;
+                            } else {
+                                return null;
+                            }
+                        });
+
+                        servicesArray = servicesArray.filter((service) => service !== null);
                         clinicsArray.push(servicesArray);
                     });
 
                     setClinics(clinicsArray);
-                    console.log('IT IS', clinicsArray);
                 } else {
                     setClinics([]);
                 }

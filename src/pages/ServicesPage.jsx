@@ -22,6 +22,7 @@ import { useEffect, useState } from 'react';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import { convertKeysToCamelCase, convertMinutesToHours, parsePrice } from '../global/global_methods';
 import { PageTitle } from '../components/PageTitle';
+import { BasicModal } from '../components/BasicModal';
 
 export function ServicesPage() {
     const { userData } = useUserData();
@@ -29,10 +30,6 @@ export function ServicesPage() {
 
     const { services, loading: clinicServicesLoading, error: clinicError } = useServices(uid);
     const { clinics, loading: patientServicesLoading, error: patientError } = useAllServices();
-
-    useEffect(() => {
-        console.log('SERVICES PAGE CLINICS', clinics);
-    });
 
     return (
         <div className="w-full">
@@ -232,6 +229,10 @@ ClinicTitleView.propTypes = {
 function ServiceCard({ index, isEditing, userData, service, className, ...props }) {
     const navigate = useNavigate();
 
+    const [isInValid, setIsInValid] = useState(false);
+
+    const [removeModal, setRemoveModal] = useState(false);
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -245,6 +246,10 @@ function ServiceCard({ index, isEditing, userData, service, className, ...props 
         navigate(serviceDetailsPath, { state: { selectedService: convertKeysToCamelCase(service) } });
     }
 
+    function editService() {
+        // EDIT SERVICE
+    }
+
     async function removeService() {
         const clinicId = userData.userId;
         const serviceId = service.id;
@@ -252,7 +257,7 @@ function ServiceCard({ index, isEditing, userData, service, className, ...props 
         if (clinicId === null || serviceId === null) {
             setError('Clinic or Service ID missing.');
             console.log('Clinic or Service ID missing.');
-            return;
+            return [false, 'Clinic or Service ID missing.'];
         }
 
         setLoading(true);
@@ -260,54 +265,93 @@ function ServiceCard({ index, isEditing, userData, service, className, ...props 
         try {
             const serviceRef = ref(db, `services/${clinicId}/${serviceId}`);
             await remove(serviceRef);
+            return [true, ''];
         } catch (err) {
             setError(err.message);
             console.log(err.message);
+            return [false, err.message];
         } finally {
             setLoading(false);
         }
     }
 
     useEffect(() => {
-        console.log('SERVICE IS:', service);
-    }, [service]);
+        let slots = Object.values(service.slots);
+        let numberOfInvalid = 0;
+        slots.forEach((slot) => {
+            if (slot.available === false) {
+                numberOfInvalid += 1;
+            }
+        });
+
+        console.log(service);
+        console.log(isInValid);
+
+        if (numberOfInvalid === slots.length) {
+            setIsInValid(true);
+        } else {
+            setIsInValid(false);
+        }
+
+        console.log(isInValid);
+    }, [service, isInValid]);
 
     return (
         <div {...props} className={twMerge('', className)}>
-            <section onClick={goToServiceDetails} className="cursor-pointer">
-                <div className="w-full flex items-end bg-normal h-[18rem]">
-                    <div className="w-full h-[16rem] overflow-hidden">
-                        <LazyLoadImage
-                            className="w-full h-full object-cover"
-                            src={convertKeysToCamelCase(service)?.imageUrl}
-                            alt={`service-img-${index}`}
-                            width={'100%'}
-                            height={'100%'}
-                            placeholderSrc={loadingImage}
-                        />
+            <main className="relative">
+                {isInValid && (
+                    <div className="absolute inset-0 z-50 flex flex-col">
+                        <div className="absolute inset-0 bg-black opacity-50" />
+
+                        <div className="relative z-10 flex items-center justify-center flex-1 text-white text-center p-4">
+                            No valid slots available
+                        </div>
                     </div>
-                </div>
-                <p className="p-2 bg-normal">{service?.name}</p>
+                )}
+                <section onClick={goToServiceDetails} className="cursor-pointer">
+                    <div className="w-full flex items-end bg-normal h-[18rem]">
+                        <div className="w-full h-[16rem] overflow-hidden">
+                            <LazyLoadImage
+                                className="w-full h-full object-cover"
+                                src={convertKeysToCamelCase(service)?.imageUrl}
+                                alt={`service-img-${index}`}
+                                width={'100%'}
+                                height={'100%'}
+                                placeholderSrc={loadingImage}
+                            />
+                        </div>
+                    </div>
+                    <p className="p-2 bg-normal">{service?.name}</p>
 
-                <div className="text-center bg-white py-2 border-[0.1px] border-dark">
-                    <p>By {service?.doctor}</p>
-                    <p>
-                        ${parsePrice(service?.price)} | {convertMinutesToHours(service?.duration)}hrs
-                    </p>
-                    {/* <p>*****</p> */}
-                </div>
-            </section>
+                    <div className="text-center bg-white py-2 border-[0.1px] border-dark">
+                        <p>By {service?.doctor}</p>
+                        <p>
+                            ${parsePrice(service?.price)} | {convertMinutesToHours(service?.duration)}hrs
+                        </p>
+                        {/* <p>*****</p> */}
+                    </div>
+                </section>
 
-            {isEditing && userData?.userType == userType1 && (
-                <Button onClick={removeService} className="w-full" variant="hot">
-                    Remove
+                {userData?.userType == userType2 && (
+                    <Button onClick={handleBookNow} className="w-full" variant="dark">
+                        Book Now
+                    </Button>
+                )}
+            </main>
+
+            {userData?.userType == userType1 && (
+                <Button onClick={editService} className="w-full" variant="dark">
+                    Edit
                 </Button>
             )}
 
-            {userData?.userType == userType2 && (
-                <Button onClick={handleBookNow} className="w-full" variant="dark">
-                    Book Now
-                </Button>
+            {isEditing && userData?.userType == userType1 && (
+                <BasicModal
+                    reason="remove"
+                    customFunction={removeService}
+                    open={removeModal}
+                    setOpen={setRemoveModal}
+                />
             )}
         </div>
     );

@@ -27,6 +27,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase/firebase';
 import { useNavigate } from 'react-router-dom';
 import { LogoLoadingScreen } from '../components/LogoLoadingScreen';
+import { SuccessMessageView } from '../components/SuccessMessageView';
 
 export function Checkout() {
     const { cart, setCart } = useCart();
@@ -36,6 +37,8 @@ export function Checkout() {
     const db = getDatabase();
 
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
     const [isButtonDisabled, setIsButtonDisabled] = useState(true);
 
     useEffect(() => {
@@ -180,7 +183,10 @@ export function Checkout() {
                     continue;
                 }
 
+                console.log('CLINIC ID ', clinicId);
+
                 try {
+                    // APPEND APPOINTMENT
                     const appointmentRef = ref(db, `appointments/${clinicId}`);
                     const appointmentResult = await push(appointmentRef, convertKeysToSnakeCase(cartItem));
 
@@ -189,16 +195,18 @@ export function Checkout() {
                         continue;
                     }
 
+                    // ADD A RECEIPT TO PATIENT'S RECORDS
                     const appointmentID = appointmentResult.key;
                     const patientRegistryRef = ref(db, `patients/${patientId}/appointments/${appointmentID}`);
-                    const reservationRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
 
                     await set(patientRegistryRef, {
                         clinic_id: clinicId,
                         timestamp: Date.now(),
                     });
 
-                    const hell0 = await set(reservationRef, true);
+                    // MARK SLOT AS RESERVED
+                    const reservationRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
+                    const hell0 = await set(reservationRef, false);
                     console.log('HELLOOOOD', hell0);
 
                     // SEND CONFIRMATION EMAILS
@@ -242,11 +250,18 @@ export function Checkout() {
                     );
 
                     // Remove the item from the cart
-                    let tempCart = [...cart];
-                    tempCart.filter((item) => {
-                        return JSON.stringify(item) !== JSON.stringify(cartItem);
+                    let tempCart = [];
+
+                    cart.forEach((item) => {
+                        if (JSON.stringify(item) !== JSON.stringify(cartItem)) {
+                            tempCart.push(item);
+                        }
                     });
+
                     setCart(tempCart);
+                    setSuccess(
+                        'Your booking has been successfully reserved. You will receive a confirmation email shortly.'
+                    );
                 } catch (err) {
                     console.log(err.message);
                     setError(err.message);
@@ -265,7 +280,7 @@ export function Checkout() {
                     <h2 className="text-2xl">Booking Summary</h2>
 
                     {cart && cart.length < 1 ? (
-                        <p>No bookings yet</p>
+                        <p className="py-5">No bookings yet</p>
                     ) : (
                         <div className="flex flex-col gap-2 py-5">
                             {cart.map((cartItem, index) => (
@@ -279,6 +294,7 @@ export function Checkout() {
             </section>
 
             {error && <ErrorMessageView error={error} />}
+            {success && <SuccessMessageView success={success} />}
 
             <Button
                 onClick={handleReservation}

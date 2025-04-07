@@ -25,7 +25,6 @@ export function UserDataProvider({ children }) {
             }
 
             try {
-                console.log('RAN');
                 const userId = user.uid;
                 const clinicRef = ref(db, `clinics/${userId}`);
                 const clinicSnapshot = await get(clinicRef);

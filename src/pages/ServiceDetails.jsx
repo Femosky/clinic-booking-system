@@ -11,6 +11,7 @@ import { getDatabase, ref, remove } from 'firebase/database';
 import { convertMinutesToHours, parsePrice } from '../global/global_methods';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import loadingImage from '../assets/placeholder-image.png';
+import { BasicModal } from '../components/BasicModal';
 
 export function ServiceDetails() {
     const location = useLocation();
@@ -18,6 +19,8 @@ export function ServiceDetails() {
 
     const { selectedService } = location.state || {};
     const { userData } = useUserData();
+
+    const [removeModal, setRemoveModal] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -39,7 +42,7 @@ export function ServiceDetails() {
         if (clinicId === null || serviceId === null) {
             setError('Clinic or Service ID missing.');
             console.log('Clinic or Service ID missing.');
-            return;
+            return [false, 'Clinic or Service ID missing.'];
         }
 
         setLoading(true);
@@ -47,9 +50,11 @@ export function ServiceDetails() {
         try {
             const serviceRef = ref(db, `services/${clinicId}/${serviceId}`);
             await remove(serviceRef);
+            return [true, ''];
         } catch (err) {
             setError(err.message);
             console.log(err.message);
+            return [false, err.message];
         } finally {
             setLoading(false);
         }
@@ -74,7 +79,7 @@ export function ServiceDetails() {
 
             <div className="w-full flex flex-col gap-20 text-sm sm:text-base lg:text-lg">
                 <main className="w-full flex flex-col md:flex-row gap-5">
-                    <section className="w-1/2 place-self-center size-[30rem]">
+                    <section className="w-[10rem] md:w-[15rem] h-[10rem] md:h-[15rem] place-self-center md:place-self-start">
                         <LazyLoadImage
                             className="w-full h-full object-cover"
                             src={selectedService?.imageUrl}
@@ -111,7 +116,7 @@ export function ServiceDetails() {
                                 <p className="w-full">${parsePrice(selectedService.price)}</p>
                             </div>
 
-                            <div className="w-full flex gap-10 justify-between">
+                            <div className="w-full flex flex-col mt-10 justify-between">
                                 <p className="w-full min-w-[7rem] font-medium">Description:</p>
                                 <p className="w-full">{selectedService.description}</p>
                             </div>
@@ -126,9 +131,12 @@ export function ServiceDetails() {
                         </Button>
                     )}
                     {userData?.userType == userType1 && (
-                        <Button onClick={removeService} className="text-sm sm:text-base" variant="hot">
-                            Remove
-                        </Button>
+                        <BasicModal
+                            reason="remove"
+                            customFunction={removeService}
+                            open={removeModal}
+                            setOpen={setRemoveModal}
+                        />
                     )}
 
                     {userData?.userType == userType2 && (

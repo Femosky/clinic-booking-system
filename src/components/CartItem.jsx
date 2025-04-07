@@ -9,6 +9,8 @@ import PropTypes from 'prop-types';
 import { Button } from './Button';
 import { ErrorMessageView } from './ErrorMessageView';
 import { formatToDayDateMonthYear } from '../global/global_methods';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+import loadingImage from '../assets/placeholder-image.png';
 
 export function CartItem({ cartItem, index }) {
     const navigate = useNavigate();
@@ -84,8 +86,15 @@ export function CartItem({ cartItem, index }) {
             <section
                 className={`w-full flex gap-4 md:items-center md:justify-between ${cartItem.taken && 'pt-1 sm:pt-4'}`}
             >
-                <div className="flex items-center">
-                    <img className="min-w-16 w-20" src={heart} alt="cart item icon" />
+                <div className="size-16 md:size-20 flex items-center">
+                    <LazyLoadImage
+                        className="size-full object-cover"
+                        src={cartItem.bookingDetails.imageUrl}
+                        alt="cart item image"
+                        width={'100%'}
+                        height={'100%'}
+                        placeholderSrc={loadingImage}
+                    />
                 </div>
 
                 <div className="w-full flex flex-col md:flex-row md:justify-between text-sm md:text-base">

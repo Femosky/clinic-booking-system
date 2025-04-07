@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useUserData } from '../hooks/useUserData';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { ErrorMessageView } from '../components/ErrorMessageView';
 import trash from '../assets/remove-or-delete-black-circle-20731 5.png';
 import PropTypes from 'prop-types';
 import { PageTitle } from '../components/PageTitle';
-import { dashboardTitle, userType1 } from '../global/global_variables';
+import { checkoutPath, dashboardTitle, userType1 } from '../global/global_variables';
 import { Title2 } from '../components/Title2';
 import { useCart } from '../hooks/useCart';
 import { CartItem } from '../components/CartItem';
 import { AppointmentItem } from '../components/AppointmentItem';
 import { usePatientAppointments } from '../hooks/usePatientAppointments';
 import { useClinicAppointments } from '../hooks/useClinicAppointments';
+import { ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react';
 
 export function Dashboard() {
     const { userData } = useUserData();
@@ -222,6 +223,17 @@ function ClinicAppointmentsView({
     getAppointments,
     selectedItem,
 }) {
+    const [showConfirmed, setShowConfirmed] = useState(true);
+    const [showPending, setShowPending] = useState(true);
+
+    function toggleConfirmed() {
+        setShowConfirmed(!showConfirmed);
+    }
+
+    function togglePending() {
+        setShowPending(!showPending);
+    }
+
     return (
         <div className="flex flex-col gap-5">
             {/* Total Appointments */}
@@ -230,8 +242,19 @@ function ClinicAppointmentsView({
                     {appointments.length > 0 ? (
                         <div className="flex flex-col gap-4">
                             <div className="flex flex-col gap-5">
-                                <Title2 title="Confirmed Appointments" />
+                                <Button
+                                    onClick={toggleConfirmed}
+                                    className="flex items-center w-fit gap-2"
+                                    variant="transparent"
+                                    size="round"
+                                >
+                                    <Title2 title="Confirmed Appointments" className="w-fit" />
+
+                                    {showConfirmed ? <ChevronUp /> : <ChevronDown />}
+                                </Button>
+
                                 {confirmedAppointments.length > 0 &&
+                                    showConfirmed &&
                                     confirmedAppointments.map((appointment, index) => (
                                         <AppointmentItem
                                             key={index}
@@ -242,8 +265,19 @@ function ClinicAppointmentsView({
                             </div>
 
                             <div className="flex flex-col gap-5">
-                                <Title2 title="Pending Appointments" />
+                                <Button
+                                    onClick={togglePending}
+                                    className="flex items-center w-fit gap-2"
+                                    variant="transparent"
+                                    size="round"
+                                >
+                                    <Title2 title="Pending Appointments" className="w-fit" />
+
+                                    {showPending ? <ChevronUp /> : <ChevronDown />}
+                                </Button>
+
                                 {pendingAppointments.length > 0 &&
+                                    showPending &&
                                     pendingAppointments.map((appointment, index) => (
                                         <AppointmentItem
                                             key={index}
@@ -265,14 +299,25 @@ function ClinicAppointmentsView({
                     {confirmedAppointments.length > 0 ? (
                         <>
                             <div className="flex flex-col gap-5">
-                                <Title2 title="Confirmed Appointments" />
-                                {confirmedAppointments.map((appointment, index) => (
-                                    <AppointmentItem
-                                        key={index}
-                                        appointmentItem={appointment}
-                                        getAppointments={getAppointments}
-                                    />
-                                ))}
+                                <Button
+                                    onClick={toggleConfirmed}
+                                    className="flex items-center w-fit gap-2"
+                                    variant="transparent"
+                                    size="round"
+                                >
+                                    <Title2 title="Confirmed Appointments" className="w-fit" />
+
+                                    {showConfirmed ? <ChevronUp /> : <ChevronDown />}
+                                </Button>
+
+                                {showConfirmed &&
+                                    confirmedAppointments.map((appointment, index) => (
+                                        <AppointmentItem
+                                            key={index}
+                                            appointmentItem={appointment}
+                                            getAppointments={getAppointments}
+                                        />
+                                    ))}
                             </div>
                         </>
                     ) : (
@@ -287,14 +332,25 @@ function ClinicAppointmentsView({
                     {pendingAppointments.length > 0 ? (
                         <>
                             <div className="flex flex-col gap-5">
-                                <Title2 title="Pending Appointments" />
-                                {pendingAppointments.map((appointment, index) => (
-                                    <AppointmentItem
-                                        key={index}
-                                        appointmentItem={appointment}
-                                        getAppointments={getAppointments}
-                                    />
-                                ))}
+                                <Button
+                                    onClick={togglePending}
+                                    className="flex items-center w-fit gap-2"
+                                    variant="transparent"
+                                    size="round"
+                                >
+                                    <Title2 title="Pending Appointments" className="w-fit" />
+
+                                    {showPending ? <ChevronUp /> : <ChevronDown />}
+                                </Button>
+
+                                {showPending &&
+                                    pendingAppointments.map((appointment, index) => (
+                                        <AppointmentItem
+                                            key={index}
+                                            appointmentItem={appointment}
+                                            getAppointments={getAppointments}
+                                        />
+                                    ))}
                             </div>
                         </>
                     ) : (
@@ -332,7 +388,7 @@ ClinicAppointmentsView.propTypes = {
 function PatientDashboardView() {
     const { appointments, pastAppointments, loading } = usePatientAppointments();
 
-    const [confirmedAppointments, setConfirmedAppointments] = useState([]);
+    const [confirmedAppointments, setConfirmedAppointments, getAppointments] = useState([]);
     const [pendingAppointments, setPendingAppointments] = useState([]);
 
     useEffect(() => {
@@ -359,8 +415,8 @@ function PatientDashboardView() {
     return (
         <div className="flex flex-col gap-5">
             <PatientPendingBookings />
-            <PatientUpcomingAppointments appointments={confirmedAppointments} />
-            <PatientPendingAppointments appointments={pendingAppointments} />
+            <PatientUpcomingAppointments appointments={confirmedAppointments} getAppointments={getAppointments} />
+            <PatientPendingAppointments appointments={pendingAppointments} getAppointments={getAppointments} />
             {/* Past Appointments */}
             {pastAppointments.length > 0 && (
                 <div>
@@ -380,16 +436,46 @@ function PatientDashboardView() {
 
 function PatientPendingBookings() {
     const { cart } = useCart();
+    const navigate = useNavigate();
+
+    const [showBookings, setShowBookings] = useState(true);
+
+    function goToCheckout() {
+        navigate(checkoutPath);
+    }
+
+    function toggleBookings() {
+        setShowBookings(!showBookings);
+    }
 
     return (
         <div className="flex flex-col gap-5">
             {cart != null && cart.length > 0 && (
                 <section>
-                    <Title2 title="Pending Bookings" />
-                    <div className="flex flex-col gap-2 py-5">
-                        {cart.map((cartItem, index) => (
-                            <CartItem key={index} cartItem={cartItem} index={index} />
-                        ))}
+                    <div className="flex gap-4 items-center">
+                        <Button
+                            onClick={toggleBookings}
+                            className="flex items-center w-fit gap-2"
+                            variant="transparent"
+                            size="round"
+                        >
+                            <Title2 title="Pending Bookings" className="w-fit" />
+
+                            {showBookings ? <ChevronUp /> : <ChevronDown />}
+                        </Button>
+                        <Button
+                            onClick={goToCheckout}
+                            className="flex bg-blue-50 hover:bg-blue-100 text-sm"
+                            variant="clear"
+                            size="round"
+                        >
+                            <p>Complete at Checkout</p>
+                            <ArrowUpRight />
+                        </Button>
+                    </div>
+                    <div className="flex flex-col gap-2 py-2">
+                        {showBookings &&
+                            cart.map((cartItem, index) => <CartItem key={index} cartItem={cartItem} index={index} />)}
                     </div>
                 </section>
             )}
@@ -397,15 +483,37 @@ function PatientPendingBookings() {
     );
 }
 
-function PatientUpcomingAppointments({ appointments }) {
+function PatientUpcomingAppointments({ appointments, getAppointments }) {
+    const [showConfirmed, setShowConfirmed] = useState(true);
+
+    function toggleConfirmed() {
+        setShowConfirmed(!showConfirmed);
+    }
+
     return (
         <div className="flex flex-col gap-5">
-            <Title2 title="Upcoming Appointments" />
+            <Button
+                onClick={toggleConfirmed}
+                className="flex items-center w-fit gap-2"
+                variant="transparent"
+                size="round"
+            >
+                <Title2 title="Upcoming Appointments" className="w-fit" />
+
+                {showConfirmed ? <ChevronUp /> : <ChevronDown />}
+            </Button>
+
             {appointments.length > 0 ? (
-                <div className="flex flex-col gap-2 py-5">
-                    {appointments.map((appointmentItem, index) => (
-                        <AppointmentItem key={index} appointmentItem={appointmentItem} index={index} />
-                    ))}
+                <div className="flex flex-col gap-2 py-2">
+                    {showConfirmed &&
+                        appointments.map((appointmentItem, index) => (
+                            <AppointmentItem
+                                key={index}
+                                appointmentItem={appointmentItem}
+                                getAppointments={getAppointments}
+                                index={index}
+                            />
+                        ))}
                 </div>
             ) : (
                 <div>No upcoming appointments</div>
@@ -416,17 +524,40 @@ function PatientUpcomingAppointments({ appointments }) {
 
 PatientUpcomingAppointments.propTypes = {
     appointments: PropTypes.array.isRequired,
+    getAppointments: PropTypes.func.isRequired,
 };
 
-function PatientPendingAppointments({ appointments }) {
+function PatientPendingAppointments({ appointments, getAppointments }) {
+    const [showPending, setShowPending] = useState(true);
+
+    function togglePending() {
+        setShowPending(!showPending);
+    }
+
     return (
         <div className="flex flex-col gap-5">
-            <Title2 title="Pending Appointments" />
+            <Button
+                onClick={togglePending}
+                className="flex items-center w-fit gap-2"
+                variant="transparent"
+                size="round"
+            >
+                <Title2 title="Pending Appointments" className="w-fit" />
+
+                {showPending ? <ChevronUp /> : <ChevronDown />}
+            </Button>
+
             {appointments.length > 0 ? (
-                <div className="flex flex-col gap-2 py-5">
-                    {appointments.map((appointmentItem, index) => (
-                        <AppointmentItem key={index} appointmentItem={appointmentItem} index={index} />
-                    ))}
+                <div className="flex flex-col gap-2 py-2">
+                    {showPending &&
+                        appointments.map((appointmentItem, index) => (
+                            <AppointmentItem
+                                key={index}
+                                appointmentItem={appointmentItem}
+                                getAppointments={getAppointments}
+                                index={index}
+                            />
+                        ))}
                 </div>
             ) : (
                 <div>No pending appointments</div>
@@ -437,6 +568,7 @@ function PatientPendingAppointments({ appointments }) {
 
 PatientPendingAppointments.propTypes = {
     appointments: PropTypes.array.isRequired,
+    getAppointments: PropTypes.func.isRequired,
 };
 
 function PastAppointments() {

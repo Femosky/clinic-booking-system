@@ -35,6 +35,20 @@ export function sendEmailNotificationUpdate(fromEmail, toEmail, fromName, toName
 
 // EMAILS
 
+export function getCanceledEmailByPatient(serviceName, doctorName, duration, appointmentTime) {
+    return `
+    You have canceled your ${convertMinutesToHours(duration)} hour${
+        convertMinutesToHours(duration) > 2 ? 's' : ' '
+    } ${serviceName} appointment with ${doctorName}.
+
+    Time: ${formatToTime(appointmentTime)}
+    Date: ${formatToDayDateMonthYear(appointmentTime)}
+    
+    Please log in to view
+    Link: ${klinicWebsite}
+    `;
+}
+
 export function getCanceledEmailFromPatient(serviceName, patientName, doctorName, duration, appointmentTime) {
     return `
     ${patientName} has canceled their ${convertMinutesToHours(duration)} hour${
@@ -49,7 +63,7 @@ export function getCanceledEmailFromPatient(serviceName, patientName, doctorName
     `;
 }
 
-export function getCanceledEmailFromClinic(serviceName, doctorName, clinicName, duration, appointmentTime) {
+export function getCanceledEmailFromClinicForPatient(serviceName, doctorName, clinicName, duration, appointmentTime) {
     return `
     ${clinicName} has canceled your ${convertMinutesToHours(duration)} hour${
         convertMinutesToHours(duration) > 2 ? 's' : ' '
@@ -88,6 +102,22 @@ export function getConfirmationEmailForPatient(serviceName, doctorName, clinicNa
     Your appointment time: ${formatToTime(appointmentTime)}
     Date: ${formatToDayDateMonthYear(appointmentTime)}
 
+    `;
+}
+
+export function getCanceledEmailFromClinicForDoctor(serviceName, patientName, clinicName, duration, appointmentTime) {
+    return `
+    ${clinicName} has canceled your ${convertMinutesToHours(duration)} hour${
+        convertMinutesToHours(duration) > 2 ? 's' : ' '
+    } ${serviceName} appointment with the patient ${patientName}.
+
+    Time: ${formatToTime(appointmentTime)}
+    Date: ${formatToDayDateMonthYear(appointmentTime)}
+
+    We are sorry for all inconveniences caused.
+    
+    Please log in to reschedule another appointment.
+    Link: ${klinicWebsite}
     `;
 }
 

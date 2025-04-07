@@ -1,23 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCart } from '../hooks/useCart';
-import { get, getDatabase, push, ref, update } from 'firebase/database';
-import heart from '../assets/image 5.png';
-import pen from '../assets/pencil-5824 5.png';
-// import trash from '../assets/remove-or-delete-black-circle-20731 5.png';
+import { getDatabase, ref, remove, set, update } from 'firebase/database';
 import PropTypes from 'prop-types';
 import { Button } from './Button';
 import { ErrorMessageView } from './ErrorMessageView';
-import { appointmentDetailsPath, bookingPath, userType1 } from '../global/global_variables';
+import { appointmentDetailsPath, klinicEmail, klinicName, userType1, userType2 } from '../global/global_variables';
 import { useUserData } from '../hooks/useUserData';
 import {
+    convertKeysToSnakeCase,
+    getCanceledEmailByPatient,
+    getCanceledEmailFromPatient,
     getConfirmationEmailForDoctor,
     getConfirmationEmailForPatient,
     isUndefined,
     parsePrice,
     sendEmailNotificationUpdate,
 } from '../global/global_methods';
-import { useClinicAppointments } from '../hooks/useClinicAppointments';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+import loadingImage from '../assets/placeholder-image.png';
+import { BasicModal } from './BasicModal';
 
 export function AppointmentItem({ appointmentItem, index, getAppointments }) {
     const navigate = useNavigate();
@@ -25,6 +26,9 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const [cancelModal, setCancelModal] = useState(false);
+    const [approveModal, setApproveModal] = useState(false);
 
     const { userData } = useUserData();
 
@@ -34,10 +38,231 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
 
     async function cancelAppointmentForClinic() {
         // CANCEL APPOINTMENT
+
+        const serviceName = appointmentItem.bookingDetails.serviceName;
+        const duration = appointmentItem.bookingDetails.duration;
+        const appointmentTime = appointmentItem.bookingDetails.slot.timestamp;
+
+        const serviceId = appointmentItem.bookingDetails.serviceId;
+        const slotId = appointmentItem.bookingDetails.slot.slotId;
+
+        const clinicId = userData.userId;
+        const appointmentId = appointmentItem.appointmentId;
+
+        const clinicEmail = userData.email;
+        const patientEmail = appointmentItem.patientData.email;
+
+        const clinicName = userData.name;
+        const patientName = appointmentItem.patientData.fullname;
+
+        const doctorEmail = appointmentItem.bookingDetails.doctorEmail;
+        const doctorName = appointmentItem.bookingDetails.doctor;
+
+        setError('');
+
+        if (
+            isUndefined(serviceName) ||
+            isUndefined(duration) ||
+            isUndefined(appointmentTime) ||
+            isUndefined(serviceId) ||
+            isUndefined(slotId) ||
+            isUndefined(clinicId) ||
+            isUndefined(appointmentId) ||
+            isUndefined(clinicEmail) ||
+            isUndefined(patientEmail) ||
+            isUndefined(clinicName) ||
+            isUndefined(patientName) ||
+            isUndefined(doctorEmail) ||
+            isUndefined(doctorName)
+        ) {
+            console.log('Missing paramaters.');
+            setError('Missing paramaters.');
+            return [false, 'Missing paramaters.'];
+        }
+
+        if (!patientEmail || !doctorEmail) {
+            console.error('Missing recipient email:', { patientEmail, doctorEmail });
+            return [false, 'Missing recipient email:'];
+        }
+
+        const messageForPatient = getCanceledEmailFromClinicForPatient(
+            serviceName,
+            doctorName,
+            clinicName,
+            duration,
+            appointmentTime
+        );
+
+        const messageForDoctor = getCanceledEmailFromClinicForDoctor(
+            serviceName,
+            patientName,
+            clinicName,
+            duration,
+            appointmentTime
+        );
+
+        let appointment = appointmentItem;
+        appointment.completed = true;
+
+        try {
+            // APPEND TO COMPLETED RECORDS
+            const completedAppointmentsRef = ref(db, `completed_appointments/${clinicId}/${appointmentId}`);
+            await set(completedAppointmentsRef, convertKeysToSnakeCase(appointmentItem));
+
+            // REMOVE FROM APPOINTMENTS
+            const appointmentRef = ref(db, `appointments/${clinicId}/${appointmentId}`);
+            await remove(appointmentRef);
+
+            // SET SLOT TO AVAILABLE AGAIN
+            const slotRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
+            await set(slotRef, true);
+
+            // SEND NOTIFICATION EMAIL TO PATIENT
+            sendEmailNotificationUpdate(
+                klinicEmail,
+                patientEmail,
+                klinicName,
+                patientName,
+                doctorEmail,
+                doctorName,
+                messageForPatient
+            );
+
+            // SEND NOTIFICATION EMAIL TO DOCTOR
+            sendEmailNotificationUpdate(
+                klinicEmail,
+                doctorEmail,
+                klinicName,
+                doctorName,
+                doctorEmail,
+                doctorName,
+                messageForDoctor
+            );
+
+            await getAppointments();
+            return [true, ''];
+        } catch (err) {
+            console.log(err.message);
+            setError(err.message);
+            return [false, err.message];
+        }
     }
 
     async function cancelAppointmentForPatient() {
         // CANCEL APPOINTMENT
+
+        const serviceName = appointmentItem.bookingDetails.serviceName;
+        const duration = appointmentItem.bookingDetails.duration;
+        const appointmentTime = appointmentItem.bookingDetails.slot.timestamp;
+
+        const serviceId = appointmentItem.bookingDetails.serviceId;
+        const slotId = appointmentItem.bookingDetails.slot.slotId;
+
+        const clinicId = userData.userId;
+        const appointmentId = appointmentItem.appointmentId;
+
+        const clinicEmail = userData.email;
+        const patientEmail = appointmentItem.patientData.email;
+
+        const clinicName = userData.name;
+        const patientName = appointmentItem.patientData.fullname;
+
+        const doctorEmail = appointmentItem.bookingDetails.doctorEmail;
+        const doctorName = appointmentItem.bookingDetails.doctor;
+
+        setError('');
+
+        if (
+            isUndefined(serviceName) ||
+            isUndefined(duration) ||
+            isUndefined(appointmentTime) ||
+            isUndefined(serviceId) ||
+            isUndefined(slotId) ||
+            isUndefined(clinicId) ||
+            isUndefined(appointmentId) ||
+            isUndefined(clinicEmail) ||
+            isUndefined(patientEmail) ||
+            isUndefined(clinicName) ||
+            isUndefined(patientName) ||
+            isUndefined(doctorEmail) ||
+            isUndefined(doctorName)
+        ) {
+            console.log('Missing paramaters.');
+            setError('Missing paramaters.');
+            return [false, 'Missing paramaters.'];
+        }
+
+        if (!patientEmail || !doctorEmail) {
+            console.error('Missing recipient email:', { patientEmail, doctorEmail });
+            return [false, 'Missing recipient email:'];
+        }
+
+        const messageForPatient = getCanceledEmailByPatient(serviceName, doctorEmail, duration, appointmentTime);
+
+        const messageForClinic = getCanceledEmailFromPatient(
+            serviceName,
+            patientName,
+            doctorName,
+            duration,
+            appointmentTime
+        );
+
+        let appointment = appointmentItem;
+        appointment.completed = true;
+
+        try {
+            // APPEND TO COMPLETED RECORDS
+            const completedAppointmentsRef = ref(db, `completed_appointments/${clinicId}/${appointmentId}`);
+            await set(completedAppointmentsRef, convertKeysToSnakeCase(appointmentItem));
+
+            // REMOVE FROM APPOINTMENTS
+            const appointmentRef = ref(db, `appointments/${clinicId}/${appointmentId}`);
+            await remove(appointmentRef);
+
+            // SET SLOT TO AVAILABLE AGAIN
+            const slotRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
+            await set(slotRef, true);
+
+            // SEND NOTIFICATION EMAIL TO PATIENT
+            sendEmailNotificationUpdate(
+                klinicEmail,
+                patientEmail,
+                klinicName,
+                patientName,
+                doctorEmail,
+                doctorName,
+                messageForPatient
+            );
+
+            // SEND NOTIFICATION EMAIL TO ClINIC
+            sendEmailNotificationUpdate(
+                klinicEmail,
+                clinicEmail,
+                klinicName,
+                clinicName,
+                doctorEmail,
+                doctorName,
+                messageForClinic
+            );
+
+            // SEND NOTIFICATION EMAIL TO DOCTOR
+            sendEmailNotificationUpdate(
+                klinicEmail,
+                doctorEmail,
+                klinicName,
+                doctorName,
+                doctorEmail,
+                doctorName,
+                messageForClinic
+            );
+
+            await getAppointments();
+            return [true, ''];
+        } catch (err) {
+            console.log(err.message);
+            setError(err.message);
+            return [false, err.message];
+        }
     }
 
     async function approveAppointment() {
@@ -76,12 +301,12 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
         ) {
             console.log('Missing paramaters.');
             setError('Missing paramaters.');
-            return;
+            return [false, 'Missing parameters.'];
         }
 
         if (!patientEmail || !doctorEmail) {
             console.error('Missing recipient email:', { patientEmail, doctorEmail });
-            return;
+            return [false, 'Missing recipient email'];
         }
 
         const messagePatient = getConfirmationEmailForPatient(
@@ -104,11 +329,11 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             const appointmentsRef = ref(db, `appointments/${clinicId}/${appointmentId}`);
             const result = await update(appointmentsRef, { confirmed: true });
             if (result === null) {
-                return;
+                return [false, 'Unsuccessful operation.'];
             }
 
             // Email to Patient
-            const resultPatient = sendEmailNotificationUpdate(
+            sendEmailNotificationUpdate(
                 clinicEmail,
                 patientEmail,
                 clinicName,
@@ -119,7 +344,7 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             );
 
             // // Email to Doctor
-            const resultDoctor = sendEmailNotificationUpdate(
+            sendEmailNotificationUpdate(
                 clinicEmail,
                 doctorEmail,
                 clinicName,
@@ -129,24 +354,37 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
                 messageDoctor
             );
 
-            console.log('PATIENT', resultPatient);
-            console.log('DOCTOR', resultDoctor);
-
             await getAppointments();
+            return [true, ''];
         } catch (err) {
             console.log(err.message);
             setError(err.message);
+            return [false, err.message];
         }
     }
 
     return (
         <div className="w-full flex flex-col md:flex-row px-4 md:px-10 py-4 md:py-2 gap-4 justify-center md:items-center md:justify-between bg-normal rounded-2xl">
             <section className="w-full flex gap-4 md:items-center md:justify-between">
-                <div className="flex items-center">
-                    <img className="min-w-16 w-20" src={heart} alt="cart item icon" />
+                <div className="size-16 md:size-20 flex items-center">
+                    <LazyLoadImage
+                        className="size-full object-cover"
+                        src={appointmentItem.bookingDetails.imageUrl}
+                        alt="cart item image"
+                        width={'100%'}
+                        height={'100%'}
+                        placeholderSrc={loadingImage}
+                    />
                 </div>
 
                 <div className="w-full md:px-20 flex flex-col md:flex-row md:justify-between text-sm md:text-base">
+                    {userData.userType === userType2 && (
+                        <div className="flex justify-between">
+                            <p className="flex md:hidden font-medium">Clinic name:</p>
+                            <p>{appointmentItem.bookingDetails.clinicName}</p>
+                        </div>
+                    )}
+
                     <div className="flex justify-between">
                         <p className="flex md:hidden font-medium">Service:</p>
                         <p>{appointmentItem.bookingDetails.serviceName}</p>
@@ -178,19 +416,28 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
                     </Button>
 
                     {userData?.userType === userType1 && !appointmentItem.confirmed && (
-                        <Button className="h-full" variant="border_1" onClick={approveAppointment}>
-                            APPROVE
-                        </Button>
+                        <BasicModal
+                            reason="approve"
+                            customFunction={approveAppointment}
+                            open={approveModal}
+                            setOpen={setApproveModal}
+                        />
                     )}
 
                     {userData?.userType === userType1 ? (
-                        <Button className="h-full" variant="hot" onClick={cancelAppointmentForClinic}>
-                            CANCEL
-                        </Button>
+                        <BasicModal
+                            reason="cancel"
+                            customFunction={cancelAppointmentForClinic}
+                            open={cancelModal}
+                            setOpen={setCancelModal}
+                        />
                     ) : (
-                        <Button className="h-full" variant="hot" onClick={cancelAppointmentForPatient}>
-                            CANCEL
-                        </Button>
+                        <BasicModal
+                            reason="cancel"
+                            customFunction={cancelAppointmentForPatient}
+                            open={cancelModal}
+                            setOpen={setCancelModal}
+                        />
                     )}
                 </section>
             )}

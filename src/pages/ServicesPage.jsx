@@ -151,8 +151,6 @@ function PatientServicesView({ userData, baseClinics, loading, error }) {
             });
         }
 
-        console.log('TEMPCLINICS', typeof tempClinics);
-
         setClinics(Object.values(tempClinics));
     }, [baseClinics, category]);
 
@@ -306,16 +304,11 @@ function ServiceCard({ index, isEditing, userData, service, className, ...props 
             }
         });
 
-        console.log(service);
-        console.log(isInValid);
-
         if (numberOfInvalid === slots.length) {
             setIsInValid(true);
         } else {
             setIsInValid(false);
         }
-
-        console.log(isInValid);
     }, [service, isInValid]);
 
     return (

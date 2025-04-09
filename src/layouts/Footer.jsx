@@ -1,10 +1,18 @@
-import { APP_NAME, BUTTON_BORDER_THICKNESS, PAGE_MAX_WIDTH } from '../global/global_variables';
+import {
+    aboutPath,
+    APP_NAME,
+    BUTTON_BORDER_THICKNESS,
+    contactPath,
+    PAGE_MAX_WIDTH,
+    servicesPath,
+} from '../global/global_variables';
 import facebook_icon from '../assets/facebook-2.png';
 import x_icon from '../assets/twitter-2.png';
 import instagram_icon from '../assets/instagram-2.png';
 import { Button } from '../components/Button';
 import PropTypes from 'prop-types';
 import { twMerge } from 'tailwind-merge';
+import { Link } from 'react-router-dom';
 
 export function Footer({ className, ...props }) {
     const footer_list = [
@@ -12,20 +20,20 @@ export function Footer({ className, ...props }) {
             id: 1,
             title: 'shop',
             list_items: [
-                ['overview', ''],
-                ['pricing', ''],
-                ['products', ''],
-                ['releases', ''],
+                ['overview', aboutPath],
+                // ['pricing', ''],
+                ['services', servicesPath],
+                // ['releases', ''],
             ],
         },
         {
             id: 2,
             title: 'company',
             list_items: [
-                ['about us', ''],
-                ['contact', ''],
-                ['news', ''],
-                ['support', ''],
+                ['about us', aboutPath],
+                ['contact', contactPath],
+                // ['news', ''],
+                // ['support', ''],
             ],
         },
     ];
@@ -88,7 +96,11 @@ function FooterList({ footer_item }) {
             <h4>{footer_item.title}</h4>
             <ul>
                 {footer_item.list_items.map((item) => {
-                    return <li key={item[0]}>{item[0]}</li>;
+                    return (
+                        <Link key={item[0]} to={item[1]}>
+                            <li>{item[0]}</li>
+                        </Link>
+                    );
                 })}
             </ul>
         </div>

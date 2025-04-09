@@ -4,11 +4,23 @@ import { getDatabase, ref, remove, set, update } from 'firebase/database';
 import PropTypes from 'prop-types';
 import { Button } from './Button';
 import { ErrorMessageView } from './ErrorMessageView';
-import { appointmentDetailsPath, klinicEmail, klinicName, userType1, userType2 } from '../global/global_variables';
+import {
+    appointmentDetailsPath,
+    dashboardPath,
+    klinicEmail,
+    klinicName,
+    userType1,
+    userType2,
+} from '../global/global_variables';
 import { useUserData } from '../hooks/useUserData';
 import {
     convertKeysToSnakeCase,
+    daysUntilAppointment,
+    formatToFullDateTime,
+    formatToShortDate,
     getCanceledEmailByPatient,
+    getCanceledEmailFromClinicForDoctor,
+    getCanceledEmailFromClinicForPatient,
     getCanceledEmailFromPatient,
     getConfirmationEmailForDoctor,
     getConfirmationEmailForPatient,
@@ -20,7 +32,7 @@ import { LazyLoadImage } from 'react-lazy-load-image-component';
 import loadingImage from '../assets/placeholder-image.png';
 import { BasicModal } from './BasicModal';
 
-export function AppointmentItem({ appointmentItem, index, getAppointments }) {
+export function AppointmentItem({ appointmentItem, index, getAppointments, getPastAppointments }) {
     const navigate = useNavigate();
     const db = getDatabase();
 
@@ -46,13 +58,14 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
         const serviceId = appointmentItem.bookingDetails.serviceId;
         const slotId = appointmentItem.bookingDetails.slot.slotId;
 
-        const clinicId = userData.userId;
+        const clinicId = appointmentItem.bookingDetails.clinicId;
         const appointmentId = appointmentItem.appointmentId;
 
-        const clinicEmail = userData.email;
+        const clinicEmail = appointmentItem.bookingDetails.clinicEmail;
         const patientEmail = appointmentItem.patientData.email;
+        const patientId = appointmentItem.bookedBy.userId;
 
-        const clinicName = userData.name;
+        const clinicName = appointmentItem.bookingDetails.clinicName;
         const patientName = appointmentItem.patientData.fullname;
 
         const doctorEmail = appointmentItem.bookingDetails.doctorEmail;
@@ -70,6 +83,7 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             isUndefined(appointmentId) ||
             isUndefined(clinicEmail) ||
             isUndefined(patientEmail) ||
+            isUndefined(patientId) ||
             isUndefined(clinicName) ||
             isUndefined(patientName) ||
             isUndefined(doctorEmail) ||
@@ -77,6 +91,7 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
         ) {
             console.log('Missing paramaters.');
             setError('Missing paramaters.');
+            console.log("iT'S'SS'S'", patientId);
             return [false, 'Missing paramaters.'];
         }
 
@@ -109,9 +124,18 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             const completedAppointmentsRef = ref(db, `completed_appointments/${clinicId}/${appointmentId}`);
             await set(completedAppointmentsRef, convertKeysToSnakeCase(appointmentItem));
 
+            const userCompletedRecordRef = ref(db, `patients/${patientId}/completed_appointments/${appointmentId}`);
+            await set(userCompletedRecordRef, {
+                clinic_id: clinicId,
+                timestamp: Date.now(),
+            });
+
             // REMOVE FROM APPOINTMENTS
             const appointmentRef = ref(db, `appointments/${clinicId}/${appointmentId}`);
             await remove(appointmentRef);
+
+            const userAppointmentRecordRef = ref(db, `patients/${patientId}/appointments/${appointmentId}`);
+            await remove(userAppointmentRecordRef);
 
             // SET SLOT TO AVAILABLE AGAIN
             const slotRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
@@ -140,6 +164,8 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             );
 
             await getAppointments();
+            await getPastAppointments();
+            navigate(dashboardPath);
             return [true, ''];
         } catch (err) {
             console.log(err.message);
@@ -158,13 +184,14 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
         const serviceId = appointmentItem.bookingDetails.serviceId;
         const slotId = appointmentItem.bookingDetails.slot.slotId;
 
-        const clinicId = userData.userId;
+        const clinicId = appointmentItem.bookingDetails.clinicId;
         const appointmentId = appointmentItem.appointmentId;
 
-        const clinicEmail = userData.email;
+        const clinicEmail = appointmentItem.bookingDetails.clinicEmail;
         const patientEmail = appointmentItem.patientData.email;
+        const patientId = appointmentItem.bookedBy.userId;
 
-        const clinicName = userData.name;
+        const clinicName = appointmentItem.bookingDetails.clinicName;
         const patientName = appointmentItem.patientData.fullname;
 
         const doctorEmail = appointmentItem.bookingDetails.doctorEmail;
@@ -182,11 +209,13 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             isUndefined(appointmentId) ||
             isUndefined(clinicEmail) ||
             isUndefined(patientEmail) ||
+            isUndefined(patientId) ||
             isUndefined(clinicName) ||
             isUndefined(patientName) ||
             isUndefined(doctorEmail) ||
             isUndefined(doctorName)
         ) {
+            console.log("it's", clinicName);
             console.log('Missing paramaters.');
             setError('Missing paramaters.');
             return [false, 'Missing paramaters.'];
@@ -215,9 +244,18 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             const completedAppointmentsRef = ref(db, `completed_appointments/${clinicId}/${appointmentId}`);
             await set(completedAppointmentsRef, convertKeysToSnakeCase(appointmentItem));
 
+            const userCompletedRecordRef = ref(db, `patients/${patientId}/completed_appointments/${appointmentId}`);
+            await set(userCompletedRecordRef, {
+                clinic_id: clinicId,
+                timestamp: Date.now(),
+            });
+
             // REMOVE FROM APPOINTMENTS
             const appointmentRef = ref(db, `appointments/${clinicId}/${appointmentId}`);
             await remove(appointmentRef);
+
+            const userAppointmentRecordRef = ref(db, `patients/${patientId}/appointments/${appointmentId}`);
+            await remove(userAppointmentRecordRef);
 
             // SET SLOT TO AVAILABLE AGAIN
             const slotRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
@@ -257,6 +295,8 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             );
 
             await getAppointments();
+            await getPastAppointments();
+            navigate(dashboardPath);
             return [true, ''];
         } catch (err) {
             console.log(err.message);
@@ -355,6 +395,8 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
             );
 
             await getAppointments();
+            await getPastAppointments();
+            navigate(dashboardPath);
             return [true, ''];
         } catch (err) {
             console.log(err.message);
@@ -364,7 +406,7 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
     }
 
     return (
-        <div className="w-full flex flex-col md:flex-row px-4 md:px-10 py-4 md:py-2 gap-4 justify-center md:items-center md:justify-between bg-normal rounded-2xl">
+        <div className="w-full relative flex flex-col md:flex-row px-4 md:px-10 py-4 md:py-2 gap-4 justify-center md:items-center md:justify-between bg-normal rounded-2xl">
             <section className="w-full flex gap-4 md:items-center md:justify-between">
                 <div className="size-16 md:size-20 flex items-center">
                     <LazyLoadImage
@@ -377,37 +419,66 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
                     />
                 </div>
 
-                <div className="w-full md:px-20 flex flex-col md:flex-row md:justify-between text-sm md:text-base">
-                    {userData.userType === userType2 && (
-                        <div className="flex justify-between">
-                            <p className="flex md:hidden font-medium">Clinic name:</p>
-                            <p>{appointmentItem.bookingDetails.clinicName}</p>
-                        </div>
+                <div className="w-full mdp:px-8 lg:px-16 gap-4 flex flex-col">
+                    {userData?.userType === userType2 && !appointmentItem.completed && (
+                        <p className="text-amber-700 text-xs sm:text-sm md:text-base">
+                            {daysUntilAppointment(appointmentItem.bookingDetails.slot.timestamp)}
+                        </p>
                     )}
 
-                    <div className="flex justify-between">
-                        <p className="flex md:hidden font-medium">Service:</p>
-                        <p>{appointmentItem.bookingDetails.serviceName}</p>
-                    </div>
+                    <div className="w-full flex flex-col md:flex-row md:justify-between text-sm md:text-base">
+                        {userData.userType === userType2 && appointmentItem.completed && (
+                            <div className="flex justify-between">
+                                <p className="flex md:hidden font-medium">Date and Time:</p>
+                                <p className="hidden md:flex">
+                                    {formatToShortDate(appointmentItem.bookingDetails.slot.timestamp)}
+                                </p>
+                            </div>
+                        )}
 
-                    <div className="flex justify-between">
-                        <p className="flex md:hidden font-medium">Doctor:</p>
-                        <p>{appointmentItem.bookingDetails.doctor}</p>
-                    </div>
+                        {userData.userType === userType1 && (
+                            <div className="flex justify-between">
+                                <p className="flex md:hidden font-medium">Date and Time:</p>
+                                <p className="hidden md:flex">
+                                    {formatToShortDate(appointmentItem.bookingDetails.slot.timestamp)}
+                                </p>
+                                <p className="flex md:hidden">
+                                    {formatToFullDateTime(appointmentItem.bookingDetails.slot.timestamp)}
+                                </p>
+                            </div>
+                        )}
 
-                    <div className="flex justify-between">
-                        <p className="flex md:hidden font-medium">Patient:</p>
-                        <p>{appointmentItem.patientData.fullname}</p>
-                    </div>
+                        {userData.userType === userType2 && (
+                            <div className="flex justify-between">
+                                <p className="flex md:hidden font-medium">Clinic name:</p>
+                                <p>{appointmentItem.bookingDetails.clinicName}</p>
+                            </div>
+                        )}
 
-                    <div className="flex justify-between">
-                        <p className="flex md:hidden font-medium">Price:</p>
-                        <p>${parsePrice(appointmentItem.bookingDetails.price)}</p>
+                        <div className="flex justify-between">
+                            <p className="flex md:hidden font-medium">Service:</p>
+                            <p>{appointmentItem.bookingDetails.serviceName}</p>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <p className="flex md:hidden font-medium">Doctor:</p>
+                            <p>{appointmentItem.bookingDetails.doctor}</p>
+                        </div>
+
+                        {userData?.userType === userType1 && (
+                            <div className="flex justify-between">
+                                <p className="flex md:hidden font-medium">Patient:</p>
+                                <p>{appointmentItem.patientData.fullname}</p>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between">
+                            <p className="flex md:hidden font-medium">Price:</p>
+                            <p>${parsePrice(appointmentItem.bookingDetails.price)}</p>
+                        </div>
                     </div>
                 </div>
             </section>
-
-            {error && <ErrorMessageView error={error} />}
 
             {appointmentItem.pastAppointment !== null && (
                 <section className="flex items-center place-self-center gap-5 w-fit">
@@ -415,7 +486,7 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
                         VIEW
                     </Button>
 
-                    {userData?.userType === userType1 && !appointmentItem.confirmed && (
+                    {userData?.userType === userType1 && !appointmentItem.completed && !appointmentItem.confirmed && (
                         <BasicModal
                             reason="approve"
                             customFunction={approveAppointment}
@@ -424,14 +495,16 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
                         />
                     )}
 
-                    {userData?.userType === userType1 ? (
+                    {userData?.userType === userType1 && !appointmentItem.completed && (
                         <BasicModal
                             reason="cancel"
                             customFunction={cancelAppointmentForClinic}
                             open={cancelModal}
                             setOpen={setCancelModal}
                         />
-                    ) : (
+                    )}
+
+                    {userData?.userType === userType2 && !appointmentItem.completed && (
                         <BasicModal
                             reason="cancel"
                             customFunction={cancelAppointmentForPatient}
@@ -441,7 +514,11 @@ export function AppointmentItem({ appointmentItem, index, getAppointments }) {
                     )}
                 </section>
             )}
-            {error && <ErrorMessageView className="text-center md:text-start" error={error} />}
+
+            <ErrorMessageView
+                className="absolute -bottom-7 left-1/4 md:left-1/3 text-center md:text-start"
+                error={error}
+            />
         </div>
     );
 }

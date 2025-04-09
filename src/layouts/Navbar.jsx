@@ -8,9 +8,11 @@ import {
     aboutPath,
     APP_NAME,
     bookingPath,
+    checkoutPath,
     contactPath,
     dashboardPath,
     loginPath,
+    registerPath,
     servicesPath,
     userType1,
     userType2,
@@ -23,6 +25,7 @@ import { useUserData } from '../hooks/useUserData';
 import { twMerge } from 'tailwind-merge';
 import { useCart } from '../hooks/useCart';
 import { LogoLoadingScreen } from '../components/LogoLoadingScreen';
+import { isUndefined } from '../global/global_methods';
 
 export function Navbar() {
     const [user, loadingAuth] = useAuthState(auth);
@@ -37,7 +40,7 @@ export function Navbar() {
         return <NavbarContent />;
     }
 
-    if (userData === null) {
+    if (isUndefined(userData)) {
         return <LogoLoadingScreen />;
     }
 
@@ -89,7 +92,7 @@ function NavbarContent() {
             toggleNav();
         }
 
-        navigate('/register');
+        navigate(registerPath);
     }
 
     function goToCheckout() {
@@ -97,7 +100,7 @@ function NavbarContent() {
             toggleNav();
         }
 
-        navigate('/checkout');
+        navigate(checkoutPath);
     }
 
     function toggleNav() {

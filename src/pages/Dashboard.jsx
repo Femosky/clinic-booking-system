@@ -28,7 +28,7 @@ export function Dashboard() {
 
 function ClinicDashboardView() {
     const [totalAppointments, setTotalAppointments] = useState(0);
-    const { appointments, pastAppointments, loading, getAppointments } = useClinicAppointments();
+    const { appointments, pastAppointments, loading, getAppointments, getPastAppointments } = useClinicAppointments();
 
     const [selectedItem, setSelectedItem] = useState(0);
 
@@ -56,7 +56,8 @@ function ClinicDashboardView() {
 
     useEffect(() => {
         function calculateTotalAppointments() {
-            setTotalAppointments(appointments.length + pastAppointments.length);
+            setTotalAppointments(appointments.length);
+            // setTotalAppointments(appointments.length + pastAppointments.length); // Can't decide whether to add pastAppointments, ask group
         }
 
         calculateTotalAppointments();
@@ -83,6 +84,7 @@ function ClinicDashboardView() {
                 confirmedAppointments={confirmedAppointments}
                 pendingAppointments={pendingAppointments}
                 getAppointments={getAppointments}
+                getPastAppointments={getPastAppointments}
                 selectedItem={selectedItem}
             />
         </div>
@@ -212,7 +214,6 @@ SummaryItem.propTypes = {
     numberOfPendingAppointments: PropTypes.number.isRequired,
     toggleSummaryItem: PropTypes.func.isRequired,
     name: PropTypes.string.isRequired,
-    number: PropTypes.string.isRequired,
 };
 
 function ClinicAppointmentsView({
@@ -221,10 +222,12 @@ function ClinicAppointmentsView({
     confirmedAppointments,
     pendingAppointments,
     getAppointments,
+    getPastAppointments,
     selectedItem,
 }) {
     const [showConfirmed, setShowConfirmed] = useState(true);
     const [showPending, setShowPending] = useState(true);
+    const [showPast, setShowPast] = useState(false);
 
     function toggleConfirmed() {
         setShowConfirmed(!showConfirmed);
@@ -232,6 +235,10 @@ function ClinicAppointmentsView({
 
     function togglePending() {
         setShowPending(!showPending);
+    }
+
+    function togglePast() {
+        setShowPast(!showPast);
     }
 
     return (
@@ -260,6 +267,7 @@ function ClinicAppointmentsView({
                                             key={index}
                                             appointmentItem={appointment}
                                             getAppointments={getAppointments}
+                                            getPastAppointments={getPastAppointments}
                                         />
                                     ))}
                             </div>
@@ -283,6 +291,7 @@ function ClinicAppointmentsView({
                                             key={index}
                                             appointmentItem={appointment}
                                             getAppointments={getAppointments}
+                                            getPastAppointments={getPastAppointments}
                                         />
                                     ))}
                             </div>
@@ -316,6 +325,7 @@ function ClinicAppointmentsView({
                                             key={index}
                                             appointmentItem={appointment}
                                             getAppointments={getAppointments}
+                                            getPastAppointments={getPastAppointments}
                                         />
                                     ))}
                             </div>
@@ -349,6 +359,7 @@ function ClinicAppointmentsView({
                                             key={index}
                                             appointmentItem={appointment}
                                             getAppointments={getAppointments}
+                                            getPastAppointments={getPastAppointments}
                                         />
                                     ))}
                             </div>
@@ -360,17 +371,35 @@ function ClinicAppointmentsView({
             )}
 
             {/* Past Appointments */}
-            {pastAppointments.length > 0 && (
+            {pastAppointments.length > 0 ? (
                 <div>
                     <>
                         <div className="flex flex-col gap-5">
-                            <Title2 title="Pending Appointments" />
-                            {pastAppointments.map((appointment, index) => (
-                                <AppointmentItem key={index} appointmentItem={appointment} />
-                            ))}
+                            <Button
+                                onClick={togglePast}
+                                className="flex items-center w-fit gap-2"
+                                variant="transparent"
+                                size="round"
+                            >
+                                <Title2 title={`Past Appointments (${pastAppointments.length})`} className="w-fit" />
+
+                                {showPast ? <ChevronUp /> : <ChevronDown />}
+                            </Button>
+
+                            {showPast &&
+                                pastAppointments.map((appointment, index) => (
+                                    <AppointmentItem
+                                        key={index}
+                                        appointmentItem={appointment}
+                                        getAppointments={getAppointments}
+                                        getPastAppointments={getPastAppointments}
+                                    />
+                                ))}
                         </div>
                     </>
                 </div>
+            ) : (
+                <>{showPast && <div>No past appointments</div>}</>
             )}
         </div>
     );
@@ -382,13 +411,14 @@ ClinicAppointmentsView.propTypes = {
     confirmedAppointments: PropTypes.array.isRequired,
     pendingAppointments: PropTypes.array.isRequired,
     getAppointments: PropTypes.func,
+    getPastAppointments: PropTypes.func,
     selectedItem: PropTypes.number.isRequired,
 };
 
 function PatientDashboardView() {
-    const { appointments, pastAppointments, loading } = usePatientAppointments();
+    const { appointments, pastAppointments, loading, getAppointments, getPastAppointments } = usePatientAppointments();
 
-    const [confirmedAppointments, setConfirmedAppointments, getAppointments] = useState([]);
+    const [confirmedAppointments, setConfirmedAppointments] = useState([]);
     const [pendingAppointments, setPendingAppointments] = useState([]);
 
     useEffect(() => {
@@ -415,21 +445,17 @@ function PatientDashboardView() {
     return (
         <div className="flex flex-col gap-5">
             <PatientPendingBookings />
-            <PatientUpcomingAppointments appointments={confirmedAppointments} getAppointments={getAppointments} />
-            <PatientPendingAppointments appointments={pendingAppointments} getAppointments={getAppointments} />
-            {/* Past Appointments */}
-            {pastAppointments.length > 0 && (
-                <div>
-                    <>
-                        <div className="flex flex-col gap-5">
-                            <Title2 title="Pending Appointments" />
-                            {pastAppointments.map((appointment, index) => (
-                                <AppointmentItem key={index} appointmentItem={appointment} />
-                            ))}
-                        </div>
-                    </>
-                </div>
-            )}
+            <PatientUpcomingAppointments
+                appointments={confirmedAppointments}
+                getAppointments={getAppointments}
+                getPastAppointments={getPastAppointments}
+            />
+            <PatientPendingAppointments
+                appointments={pendingAppointments}
+                getAppointments={getAppointments}
+                getPastAppointments={getPastAppointments}
+            />
+            <PatientPastAppointments pastAppointments={pastAppointments} />
         </div>
     );
 }
@@ -459,7 +485,7 @@ function PatientPendingBookings() {
                             variant="transparent"
                             size="round"
                         >
-                            <Title2 title="Pending Bookings" className="w-fit" />
+                            <Title2 title="Pending Bookings" className="w-fit text-amber-700" />
 
                             {showBookings ? <ChevronUp /> : <ChevronDown />}
                         </Button>
@@ -483,7 +509,7 @@ function PatientPendingBookings() {
     );
 }
 
-function PatientUpcomingAppointments({ appointments, getAppointments }) {
+function PatientUpcomingAppointments({ appointments, getAppointments, getPastAppointments }) {
     const [showConfirmed, setShowConfirmed] = useState(true);
 
     function toggleConfirmed() {
@@ -511,12 +537,13 @@ function PatientUpcomingAppointments({ appointments, getAppointments }) {
                                 key={index}
                                 appointmentItem={appointmentItem}
                                 getAppointments={getAppointments}
+                                getPastAppointments={getPastAppointments}
                                 index={index}
                             />
                         ))}
                 </div>
             ) : (
-                <div>No upcoming appointments</div>
+                <>{showConfirmed && <div>No upcoming appointments</div>}</>
             )}
         </div>
     );
@@ -524,10 +551,11 @@ function PatientUpcomingAppointments({ appointments, getAppointments }) {
 
 PatientUpcomingAppointments.propTypes = {
     appointments: PropTypes.array.isRequired,
-    getAppointments: PropTypes.func.isRequired,
+    getAppointments: PropTypes.func,
+    getPastAppointments: PropTypes.func,
 };
 
-function PatientPendingAppointments({ appointments, getAppointments }) {
+function PatientPendingAppointments({ appointments, getAppointments, getPastAppointments }) {
     const [showPending, setShowPending] = useState(true);
 
     function togglePending() {
@@ -555,12 +583,13 @@ function PatientPendingAppointments({ appointments, getAppointments }) {
                                 key={index}
                                 appointmentItem={appointmentItem}
                                 getAppointments={getAppointments}
+                                getPastAppointments={getPastAppointments}
                                 index={index}
                             />
                         ))}
                 </div>
             ) : (
-                <div>No pending appointments</div>
+                <>{showPending && <div>No pending appointments</div>}</>
             )}
         </div>
     );
@@ -568,9 +597,38 @@ function PatientPendingAppointments({ appointments, getAppointments }) {
 
 PatientPendingAppointments.propTypes = {
     appointments: PropTypes.array.isRequired,
-    getAppointments: PropTypes.func.isRequired,
+    getAppointments: PropTypes.func,
+    getPastAppointments: PropTypes.func,
 };
 
-function PastAppointments() {
-    return <div>hi</div>;
+function PatientPastAppointments({ pastAppointments }) {
+    const [showPast, setShowPast] = useState(false);
+
+    function togglePast() {
+        setShowPast(!showPast);
+    }
+    return (
+        <div className="flex flex-col gap-5">
+            <Button onClick={togglePast} className="flex items-center w-fit gap-2" variant="transparent" size="round">
+                <Title2 title={`Past Appointments (${pastAppointments.length})`} className="w-fit" />
+
+                {showPast ? <ChevronUp /> : <ChevronDown />}
+            </Button>
+
+            {pastAppointments.length > 0 ? (
+                <div className="flex flex-col gap-2 py-2">
+                    {showPast &&
+                        pastAppointments.map((appointmentItem, index) => (
+                            <AppointmentItem key={index} appointmentItem={appointmentItem} index={index} />
+                        ))}
+                </div>
+            ) : (
+                <>{showPast && <div>No past appointments</div>}</>
+            )}
+        </div>
+    );
 }
+
+PatientPastAppointments.propTypes = {
+    pastAppointments: PropTypes.array.isRequired,
+};

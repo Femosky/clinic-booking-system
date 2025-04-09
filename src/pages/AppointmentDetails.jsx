@@ -20,7 +20,7 @@ import {
     isUndefined,
     sendEmailNotificationUpdate,
 } from '../global/global_methods';
-import { getDatabase, push, ref, remove, set, update } from 'firebase/database';
+import { getDatabase, ref, remove, set, update } from 'firebase/database';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import loadingImage from '../assets/placeholder-image.png';
 import { BasicModal } from '../components/BasicModal';
@@ -52,13 +52,14 @@ export function AppointmentDetails() {
         const serviceId = selectedAppointment.bookingDetails.serviceId;
         const slotId = selectedAppointment.bookingDetails.slot.slotId;
 
-        const clinicId = userData.userId;
+        const clinicId = selectedAppointment.bookingDetails.clinicId;
         const appointmentId = selectedAppointment.appointmentId;
 
-        const clinicEmail = userData.email;
+        const clinicEmail = selectedAppointment.bookingDetails.clinicEmail;
         const patientEmail = selectedAppointment.patientData.email;
+        const patientId = selectedAppointment.bookedBy.userId;
 
-        const clinicName = userData.name;
+        const clinicName = selectedAppointment.bookingDetails.clinicName;
         const patientName = selectedAppointment.patientData.fullname;
 
         const doctorEmail = selectedAppointment.bookingDetails.doctorEmail;
@@ -76,6 +77,7 @@ export function AppointmentDetails() {
             isUndefined(appointmentId) ||
             isUndefined(clinicEmail) ||
             isUndefined(patientEmail) ||
+            isUndefined(patientId) ||
             isUndefined(clinicName) ||
             isUndefined(patientName) ||
             isUndefined(doctorEmail) ||
@@ -115,9 +117,18 @@ export function AppointmentDetails() {
             const completedAppointmentsRef = ref(db, `completed_appointments/${clinicId}/${appointmentId}`);
             await set(completedAppointmentsRef, convertKeysToSnakeCase(selectedAppointment));
 
+            const userCompletedRecordRef = ref(db, `patients/${patientId}/completed_appointments/${appointmentId}`);
+            await set(userCompletedRecordRef, {
+                clinic_id: clinicId,
+                timestamp: Date.now(),
+            });
+
             // REMOVE FROM APPOINTMENTS
             const appointmentRef = ref(db, `appointments/${clinicId}/${appointmentId}`);
             await remove(appointmentRef);
+
+            const userAppointmentRecordRef = ref(db, `patients/${patientId}/appointments/${appointmentId}`);
+            await remove(userAppointmentRecordRef);
 
             // SET SLOT TO AVAILABLE AGAIN
             const slotRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
@@ -166,13 +177,14 @@ export function AppointmentDetails() {
         const serviceId = selectedAppointment.bookingDetails.serviceId;
         const slotId = selectedAppointment.bookingDetails.slot.slotId;
 
-        const clinicId = userData.userId;
+        const clinicId = selectedAppointment.bookingDetails.clinicId;
         const appointmentId = selectedAppointment.appointmentId;
 
-        const clinicEmail = userData.email;
+        const clinicEmail = selectedAppointment.bookingDetails.clinicEmail;
         const patientEmail = selectedAppointment.patientData.email;
+        const patientId = selectedAppointment.bookedBy.userId;
 
-        const clinicName = userData.name;
+        const clinicName = selectedAppointment.bookingDetails.clinicName;
         const patientName = selectedAppointment.patientData.fullname;
 
         const doctorEmail = selectedAppointment.bookingDetails.doctorEmail;
@@ -190,6 +202,7 @@ export function AppointmentDetails() {
             isUndefined(appointmentId) ||
             isUndefined(clinicEmail) ||
             isUndefined(patientEmail) ||
+            isUndefined(patientId) ||
             isUndefined(clinicName) ||
             isUndefined(patientName) ||
             isUndefined(doctorEmail) ||
@@ -223,9 +236,18 @@ export function AppointmentDetails() {
             const completedAppointmentsRef = ref(db, `completed_appointments/${clinicId}/${appointmentId}`);
             await set(completedAppointmentsRef, convertKeysToSnakeCase(selectedAppointment));
 
+            const userCompletedRecordRef = ref(db, `patients/${patientId}/completed_appointments/${appointmentId}`);
+            await set(userCompletedRecordRef, {
+                clinic_id: clinicId,
+                timestamp: Date.now(),
+            });
+
             // REMOVE FROM APPOINTMENTS
             const appointmentRef = ref(db, `appointments/${clinicId}/${appointmentId}`);
             await remove(appointmentRef);
+
+            const userAppointmentRecordRef = ref(db, `patients/${patientId}/appointments/${appointmentId}`);
+            await remove(userAppointmentRecordRef);
 
             // SET SLOT TO AVAILABLE AGAIN
             const slotRef = ref(db, `services/${clinicId}/${serviceId}/slots/${slotId}/available`);
@@ -300,6 +322,7 @@ export function AppointmentDetails() {
                 return [false, 'Mark as completed failed.'];
             } else {
                 setCompleted(true);
+                selectedAppointment.completed = true;
                 return [true, ''];
             }
         } catch (err) {
@@ -528,7 +551,7 @@ export function AppointmentDetails() {
                 {/* BUTTONS */}
                 {selectedAppointment.pastAppointment !== null && (
                     <section className="flex place-self-center md:place-self-end gap-2">
-                        {!completed && userData?.userType === userType1 && (
+                        {userData?.userType === userType1 && !selectedAppointment.completed && (
                             <BasicModal
                                 reason="cancel"
                                 customFunction={cancelAppointmentForClinic}
@@ -537,7 +560,7 @@ export function AppointmentDetails() {
                             />
                         )}
 
-                        {!completed && userData?.userType === userType2 && (
+                        {userData?.userType === userType2 && !selectedAppointment.completed && (
                             <BasicModal
                                 reason="cancel"
                                 customFunction={cancelAppointmentForPatient}
@@ -546,31 +569,36 @@ export function AppointmentDetails() {
                             />
                         )}
 
-                        {!success && userData?.userType === userType1 && selectedAppointment.confirmed === false && (
-                            <BasicModal
-                                reason="approve"
-                                customFunction={approveAppointment}
-                                open={approveModal}
-                                setOpen={setApproveModal}
-                            />
-                        )}
+                        {userData?.userType === userType1 &&
+                            selectedAppointment.confirmed === false &&
+                            !selectedAppointment.completed &&
+                            !success && (
+                                <BasicModal
+                                    reason="approve"
+                                    customFunction={approveAppointment}
+                                    open={approveModal}
+                                    setOpen={setApproveModal}
+                                />
+                            )}
 
-                        {success && (
+                        {!selectedAppointment.completed && success && (
                             <Button disabled className="cursor-default" variant="dark">
                                 CONFIRMED
                             </Button>
                         )}
 
-                        {!completed && userData?.userType === userType1 && selectedAppointment.confirmed && (
-                            <BasicModal
-                                reason="mark as completed"
-                                customFunction={handleMarkAsCompleted}
-                                open={completedModal}
-                                setOpen={setCompletedModal}
-                            />
-                        )}
+                        {userData?.userType === userType1 &&
+                            selectedAppointment.confirmed &&
+                            !selectedAppointment.completed && (
+                                <BasicModal
+                                    reason="mark as completed"
+                                    customFunction={handleMarkAsCompleted}
+                                    open={completedModal}
+                                    setOpen={setCompletedModal}
+                                />
+                            )}
 
-                        {completed && (
+                        {selectedAppointment.completed && (
                             <Button disabled className="cursor-default" variant="dark">
                                 COMPLETED
                             </Button>

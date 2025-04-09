@@ -124,7 +124,6 @@ function LoginForm({ signInWithGoogle }) {
                         placeholder="Enter your email address"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        required
                     />
                 </div>
 
@@ -137,11 +136,10 @@ function LoginForm({ signInWithGoogle }) {
                         placeholder="Enter your password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        required
                     />
                 </div>
 
-                <div className="text-normal w-full flex justify-end">
+                <div className="text-dark w-full flex justify-end">
                     <Link to={resetPasswordPath}>Forgot password?</Link>
                 </div>
 

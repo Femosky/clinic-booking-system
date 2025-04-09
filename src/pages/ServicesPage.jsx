@@ -248,6 +248,7 @@ function ServiceCard({ index, isEditing, userData, service, className, ...props 
 
     function editService() {
         // EDIT SERVICE
+        navigate(addServicePath, { state: { selectedService: convertKeysToCamelCase(service) } });
     }
 
     async function removeService() {

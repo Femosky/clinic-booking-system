@@ -142,7 +142,7 @@ function SignUpForm() {
             if (fullName.length === 0) {
                 setError('Please enter your full name.');
                 return false;
-            } else if (clinicName.length < 2) {
+            } else if (fullName.length < 2) {
                 setError('Please enter a valid full name.');
                 return false;
             }
@@ -180,7 +180,7 @@ function SignUpForm() {
             await set(ref(db, userPath), {
                 fullName: user.displayName,
                 email: user.email,
-                selectedUserType,
+                user_type: selectedUserType,
             });
 
             navigate(dashboardPath);

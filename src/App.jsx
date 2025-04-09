@@ -64,6 +64,7 @@ function AppContent() {
                         <Route path={serviceDetailsPath} element={<ServiceDetails />} />
                         <Route path={contactPath} element={<Contact />} />
                         <Route path={aboutPath} element={<AboutUs />} />
+
                         <Route element={<PublicRoutes />}>
                             {/* <Route path={homePath} element={<Homepage />} /> */}
                             <Route path={loginPath} element={<Login />} />

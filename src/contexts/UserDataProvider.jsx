@@ -1,4 +1,4 @@
-import { get, getDatabase, ref } from 'firebase/database';
+import { get, getDatabase, ref, set } from 'firebase/database';
 import { useEffect, useState } from 'react';
 import { createContext } from 'react';
 import { convertKeysToCamelCase } from '../global/global_methods';
@@ -56,6 +56,33 @@ export function UserDataProvider({ children }) {
                 setLoading(false);
             }
         }
+
+        setTimeout(async () => {
+            if (user) {
+                const isGoogleUser = user.providerData?.some((provider) => provider.providerId === 'google.com');
+
+                if (isGoogleUser && userData === null) {
+                    try {
+                        const db = getDatabase();
+                        const userPath = `patients/${user.uid}`;
+
+                        const userSnapshot = await get(ref(db, userPath));
+
+                        if (!userSnapshot.exists()) {
+                            await set(ref(db, userPath), {
+                                fullName: user.displayName,
+                                email: user.email,
+                                user_type: 'patient',
+                            });
+                        }
+
+                        fetchUserData();
+                    } catch (err) {
+                        console.log(err.message);
+                    }
+                }
+            }
+        }, 5000);
 
         if (user) {
             fetchUserData();

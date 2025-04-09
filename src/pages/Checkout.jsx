@@ -42,15 +42,6 @@ export function Checkout() {
     const [isButtonDisabled, setIsButtonDisabled] = useState(true);
 
     useEffect(() => {
-        if (userData !== null && userData.userType === userType1) {
-            // Navigate back to the previous page
-            navigate(-1);
-        }
-
-        console.log(cart);
-    }, [userData, navigate]);
-
-    useEffect(() => {
         if (cart && cart.length > 0) {
             setIsButtonDisabled(false);
         } else {
@@ -58,7 +49,16 @@ export function Checkout() {
         }
     }, [cart]);
 
-    if (userData === null) {
+    useEffect(() => {
+        if (!isUndefined(userData) && userData.userType === userType1) {
+            // Navigate back to the previous page
+            navigate(-1);
+        }
+
+        console.log(cart);
+    }, [userData, navigate]);
+
+    if (isUndefined(userData)) {
         return <LogoLoadingScreen />;
     }
 
@@ -333,7 +333,7 @@ function OrderSummaryView() {
 
         setTotal(tempTotal);
 
-        if (cart.length < 1) {
+        if (tempCart.length < 1) {
             return;
         }
 

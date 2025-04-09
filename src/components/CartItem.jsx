@@ -11,6 +11,7 @@ import { ErrorMessageView } from './ErrorMessageView';
 import { formatToDayDateMonthYear } from '../global/global_methods';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import loadingImage from '../assets/placeholder-image.png';
+import { bookingPath } from '../global/global_variables';
 
 export function CartItem({ cartItem, index }) {
     const navigate = useNavigate();
@@ -32,13 +33,13 @@ export function CartItem({ cartItem, index }) {
         const service = await handleGetService(index);
 
         if (service) {
-            navigate('/booking', { state: { selectedService: service } });
+            navigate(bookingPath, { state: { selectedService: service } });
         }
     }
 
     async function handleGetService(index) {
-        const clinicId = cart[index].booking_details.clinic_id;
-        const serviceId = cart[index].booking_details.service_id;
+        const clinicId = cart[index].bookingDetails.clinicId;
+        const serviceId = cart[index].bookingDetails.serviceId;
 
         if (!clinicId || !serviceId) {
             setError('Clinic or service ID missing');
@@ -101,6 +102,11 @@ export function CartItem({ cartItem, index }) {
                     <div className="flex justify-between">
                         <p className="flex md:hidden font-medium">Time:</p>
                         <p>{formatToDayDateMonthYear(cartItem.bookingDetails.slot.timestamp)}</p>
+                    </div>
+
+                    <div className="flex justify-between">
+                        <p className="flex md:hidden font-medium">Clinic name:</p>
+                        <p>{cartItem.bookingDetails.clinicName}</p>
                     </div>
 
                     <div className="flex justify-between">

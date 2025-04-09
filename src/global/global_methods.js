@@ -167,9 +167,21 @@ export function formatToTime(unixTime) {
     return format(date, 'hh:mm a'); // Format as HH:MM AM/PM
 }
 
+export function formatToShortDate(unixTime) {
+    const date = convertUnixToDateObject(unixTime);
+    return format(date, 'dd/MM/yy');
+}
+
 export function formatToDayDateMonthYear(unixTime) {
     const date = convertUnixToDateObject(unixTime);
     return format(date, 'EEEE, do MMMM yyyy');
+}
+
+export function formatToFullDateTime(unixTime) {
+    const date = convertUnixToDateObject(unixTime);
+    const dayDateMonthYear = format(date, 'EEEE, do MMMM yyyy');
+    const time = format(date, 'hh:mm a');
+    return `${time} on ${dayDateMonthYear}`;
 }
 
 export function daysUntilAppointment(unixTime) {

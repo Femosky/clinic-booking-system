@@ -87,13 +87,13 @@ export function Booking() {
     }, [selectedService]);
 
     useEffect(() => {
-        if (userData !== null && userData.userType === userType1) {
+        if (!isUndefined(userData) && userData.userType === userType1) {
             // Navigate back to the previous page
             navigate(-1);
         }
     }, [userData, navigate]);
 
-    if (userData === null) {
+    if (isUndefined(userData)) {
         return <LogoLoadingScreen />;
     }
 

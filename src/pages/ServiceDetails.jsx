@@ -6,9 +6,9 @@ import { BackButton } from '../components/BackButton';
 import { Title2 } from '../components/Title2';
 import { PageTitle } from '../components/PageTitle';
 import { Button } from '../components/Button';
-import { bookingPath, loginPath, userType1, userType2 } from '../global/global_variables';
+import { addServicePath, bookingPath, loginPath, userType1, userType2 } from '../global/global_variables';
 import { getDatabase, ref, remove } from 'firebase/database';
-import { convertMinutesToHours, parsePrice } from '../global/global_methods';
+import { convertKeysToCamelCase, convertMinutesToHours, parsePrice } from '../global/global_methods';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import loadingImage from '../assets/placeholder-image.png';
 import { BasicModal } from '../components/BasicModal';
@@ -33,6 +33,11 @@ export function ServiceDetails() {
 
     function navigateToLogin() {
         navigate(loginPath);
+    }
+
+    function editService() {
+        // EDIT SERVICE
+        navigate(addServicePath, { state: { selectedService: convertKeysToCamelCase(selectedService) } });
     }
 
     async function removeService() {
@@ -130,6 +135,13 @@ export function ServiceDetails() {
                             LOGIN TO BOOK
                         </Button>
                     )}
+
+                    {userData?.userType == userType1 && (
+                        <Button onClick={editService} className="w-full" variant="dark">
+                            Edit
+                        </Button>
+                    )}
+
                     {userData?.userType == userType1 && (
                         <BasicModal
                             reason="remove"

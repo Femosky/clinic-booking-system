@@ -43,7 +43,7 @@ export function ServicesPage() {
             ) : (
                 <PatientServicesView
                     userData={userData}
-                    clinics={clinics}
+                    baseClinics={clinics}
                     loading={patientServicesLoading}
                     error={patientError}
                 />
@@ -112,10 +112,20 @@ ClinicServicesView.propTypes = {
     error: PropTypes.object,
 };
 
-function PatientServicesView({ userData, clinics, loading, error }) {
+function PatientServicesView({ userData, baseClinics, loading, error }) {
     const [category, setCategory] = useState('');
 
+    const [clinics, setClinics] = useState([]);
+
     const [expandedClinics, setExpandedClinics] = useState({});
+
+    // Function to toggle clinic visibility
+    const toggleClinic = (clinicId) => {
+        setExpandedClinics((prev) => ({
+            ...prev,
+            [clinicId]: !prev[clinicId],
+        }));
+    };
 
     useEffect(() => {
         if (clinics.length > 0) {
@@ -127,13 +137,24 @@ function PatientServicesView({ userData, clinics, loading, error }) {
         }
     }, [clinics]); // Runs only when `clinics` changes
 
-    // Function to toggle clinic visibility
-    const toggleClinic = (clinicId) => {
-        setExpandedClinics((prev) => ({
-            ...prev,
-            [clinicId]: !prev[clinicId],
-        }));
-    };
+    // Filter by Clinic Category
+    useEffect(() => {
+        let tempClinics = {};
+
+        if (category === '') {
+            tempClinics = baseClinics;
+        } else {
+            Object.keys(baseClinics).forEach((index) => {
+                if (baseClinics[index][0].clinicCategory === category) {
+                    tempClinics[index] = baseClinics[index];
+                }
+            });
+        }
+
+        console.log('TEMPCLINICS', typeof tempClinics);
+
+        setClinics(Object.values(tempClinics));
+    }, [baseClinics, category]);
 
     return (
         <>
@@ -213,7 +234,7 @@ function PatientServicesView({ userData, clinics, loading, error }) {
 
 PatientServicesView.propTypes = {
     userData: PropTypes.object,
-    clinics: PropTypes.array.isRequired,
+    baseClinics: PropTypes.array.isRequired,
     loading: PropTypes.bool.isRequired,
     error: PropTypes.object,
 };
